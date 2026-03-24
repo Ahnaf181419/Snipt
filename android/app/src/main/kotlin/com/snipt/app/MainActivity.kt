@@ -1,4 +1,4 @@
-package com.example.snipt
+package com.snipt.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -6,16 +6,16 @@ import 'core/logger/app_logger.dart';
 import 'services/clipboard_service.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  initTalker();
-
-  FlutterError.onError = (details) {
-    talker.handle(details.exception, details.stack, 'FlutterError');
-  };
-
   runZonedGuarded(
     () async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      initTalker();
+
+      FlutterError.onError = (details) {
+        talker.handle(details.exception, details.stack, 'FlutterError');
+      };
+
       SystemChrome.setSystemUIOverlayStyle(
         const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
