@@ -239,11 +239,7 @@ class ClipboardItemCard extends StatelessWidget {
   }
 
   void _copyToClipboard(BuildContext context) {
-    if (item.isImage) {
-      Clipboard.setData(ClipboardData(text: item.content));
-    } else {
-      Clipboard.setData(ClipboardData(text: item.content));
-    }
+    Clipboard.setData(ClipboardData(text: item.content));
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

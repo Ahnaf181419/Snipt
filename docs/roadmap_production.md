@@ -44,6 +44,11 @@ Build "Snipt" - a production-ready Android clipboard manager app using Flutter w
 - **JSON export** in `clipboard_repository_impl.dart:206` - `exportToJson()` used `.toString()` instead of `jsonEncode()`
 - **ClipboardService timer leak** - `startService()` could be called multiple times without checking if already running
 - **Search debounce bug** - `_lastQuery` not reset on `ClearSearch`, preventing re-search of same query
+- **Background service crash** - Missing `<service>` declaration in `AndroidManifest.xml` caused crash when enabling background capture
+- **Background service crash** - No error handling in `onStart()` isolate callback; wrapped entire body in try-catch
+- **Background service crash** - Added try-catch to all `ClipboardService` methods (`startService`, `stopService`, `isRunning`, `_requestPermissions`)
+- **App crash on launch** - Sentry initialized with empty DSN when `SENTRY_DSN` env var not set; fixed by conditionally initializing Sentry only when DSN is non-empty
+- **App crash on launch** - Used incorrect `appRunner` API pattern; simplified to standard `runApp()` pattern
 
 ## Phase 3: Architecture Improvements ✅
 - **Category use case** - Created `DetectCategoryUseCase` in domain layer

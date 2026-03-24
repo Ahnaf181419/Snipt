@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:talker_bloc_logger/talker_bloc_logger.dart';
 import 'core/constants/app_strings.dart';
+import 'core/logger/app_logger.dart';
 import 'core/theme/app_theme.dart';
 import 'data/datasources/local_database.dart';
 import 'data/repositories/clipboard_repository_impl.dart';
@@ -16,6 +18,8 @@ class SniptApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Bloc.observer = TalkerBlocObserver(talker: talker);
+
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<LocalDatabase>(

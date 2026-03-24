@@ -18,21 +18,19 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<ClipboardBloc>().add(LoadBookmarkedItems());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ClipboardBloc>().add(LoadBookmarkedItems());
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.bookmarks),
-      ),
+      appBar: AppBar(title: const Text(AppStrings.bookmarks)),
       body: BlocBuilder<ClipboardBloc, ClipboardState>(
         builder: (context, state) {
           if (state.status == ClipboardLoadStatus.loading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           final items = state.bookmarkedItems;

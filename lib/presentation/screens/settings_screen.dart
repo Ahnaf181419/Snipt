@@ -1,11 +1,13 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/logger/app_logger.dart';
+import '../../domain/repositories/clipboard_repository.dart';
 import '../../services/clipboard_service.dart';
 import '../bloc/clipboard/clipboard_bloc.dart';
 import '../bloc/clipboard/clipboard_event.dart';
@@ -81,9 +83,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final file = File('${directory.path}/snipt_backup.json');
                     await file.writeAsString(jsonData);
                     
-                    await Share.shareXFiles(
-                      [XFile(file.path)],
-                      subject: 'Snipt Backup',
+                    await SharePlus.instance.share(
+                      ShareParams(
+                        files: [XFile(file.path)],
+                        subject: 'Snipt Backup',
+                      ),
                     );
                     if (!mounted) return;
                     messenger.showSnackBar(
@@ -104,6 +108,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () => _showClearDataConfirmation(context),
               ),
               const SizedBox(height: 32),
+              _buildSectionHeader('Developer'),
+              _buildActionTile(
+                title: 'View Logs',
+                icon: Icons.bug_report,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => TalkerScreen(
+                        talker: talker,
+                        theme: TalkerScreenTheme(
+                          backgroundColor: AppColors.background,
+                          cardColor: AppColors.card,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
               _buildSectionHeader('About'),
               _buildInfoTile(
                 title: 'Version',
@@ -237,29 +260,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<String> _exportData() async {
-    final bloc = context.read<ClipboardBloc>();
-    final items = bloc.state.recentItems;
-    final bookmarked = bloc.state.bookmarkedItems;
-    
-    final exportData = {
-      'exportDate': DateTime.now().toIso8601String(),
-      'appVersion': '1.0.0',
-      'recentItems': items.map((item) => {
-        'id': item.id,
-        'content': item.content,
-        'category': item.category.name,
-        'isBookmarked': item.isBookmarked,
-        'createdAt': item.createdAt,
-      }).toList(),
-      'bookmarkedItems': bookmarked.map((item) => {
-        'id': item.id,
-        'content': item.content,
-        'category': item.category.name,
-        'createdAt': item.createdAt,
-      }).toList(),
-    };
-    
-    return jsonEncode(exportData);
+    final repository = context.read<ClipboardRepository>();
+    return await repository.exportToJson();
   }
 
   void _showClearDataConfirmation(BuildContext context) {

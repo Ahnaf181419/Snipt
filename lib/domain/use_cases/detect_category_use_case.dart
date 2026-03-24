@@ -10,7 +10,7 @@ class DetectCategoryUseCase {
     );
     if (urlPattern.hasMatch(content)) return Category.url;
 
-    final phonePattern = RegExp(r'^[\+]?[(]?[0-9]{1-4}[)]?[-\s\./0-9]{6,}$');
+    final phonePattern = RegExp(r'^[\+]?[(]?[0-9]{1,4}[)]?[-\s\./0-9]{6,}$');
     if (phonePattern.hasMatch(content.replaceAll(' ', ''))) return Category.phone;
 
     return Category.text;

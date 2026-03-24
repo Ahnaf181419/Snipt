@@ -36,6 +36,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <service
+            android:name="id.flutter.flutter_background_service.BackgroundService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false"
+            tools:replace="android:exported" />
     </application>
     
     <queries>

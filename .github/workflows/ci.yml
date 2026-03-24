@@ -70,10 +70,36 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - run: flutter pub get
-        working-directory: snipt
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
-      - run: flutter test integration_test --reporter compact
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-api-33
+
+      - name: Create AVD and run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          working-directory: snipt
+          script: flutter test integration_test --reporter compact
+
+      - run: flutter pub get
         working-directory: snipt
 
   build_debug:
@@ -99,8 +125,6 @@ jobs:
 
       - run: flutter build apk --debug
         working-directory: snipt
-        env:
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -112,6 +136,7 @@ jobs:
     name: Build Release APK
     runs-on: ubuntu-latest
     needs: [analyze, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
@@ -129,17 +154,22 @@ jobs:
       - run: flutter pub get
         working-directory: snipt
 
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > snipt/android/app/keystore.jks
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
       - name: Create key.properties
         run: |
-          echo "storePassword=${{ secrets.KEY_STORE_PASSWORD }}" >> snipt/android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> snipt/android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> snipt/android/key.properties
-          echo "storeFile=${{ secrets.KEY_STORE_FILE }}" >> snipt/android/key.properties
+          cat <<EOF > snipt/android/key.properties
+          storePassword=${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=keystore.jks
+          EOF
 
       - run: flutter build apk --release
         working-directory: snipt
-        env:
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Upload release APK
         uses: actions/upload-artifact@v4

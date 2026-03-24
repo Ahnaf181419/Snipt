@@ -16,8 +16,14 @@ class LocalDatabase {
     if (_database != null) return _database!;
     if (_initCompleter != null) return _initCompleter!.future;
     _initCompleter = Completer<Database>();
-    _database = await _initDatabase();
-    _initCompleter!.complete(_database);
+    try {
+      _database = await _initDatabase();
+      _initCompleter!.complete(_database);
+    } catch (e) {
+      _initCompleter!.completeError(e);
+      _initCompleter = null;
+      rethrow;
+    }
     return _database!;
   }
 

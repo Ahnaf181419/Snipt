@@ -79,9 +79,9 @@ class ClearAllItems extends ClipboardEvent {}
 
 class UpdateStorageLimit extends ClipboardEvent {
   final int limit;
-  
+
   const UpdateStorageLimit(this.limit);
-  
+
   @override
   List<Object?> get props => [limit];
 }

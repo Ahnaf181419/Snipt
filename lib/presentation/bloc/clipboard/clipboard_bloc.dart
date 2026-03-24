@@ -1,14 +1,24 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart' as uuid_pkg;
+import 'package:uuid/enums.dart';
 import '../../../domain/entities/clipboard_item.dart';
 import '../../../domain/repositories/clipboard_repository.dart';
 import '../../../domain/use_cases/detect_category_use_case.dart';
 import 'clipboard_event.dart';
 import 'clipboard_state.dart';
 
+class _SearchResultsReady extends ClipboardEvent {
+  final String query;
+  const _SearchResultsReady(this.query);
+  @override
+  List<Object?> get props => [query];
+}
+
 class ClipboardBloc extends Bloc<ClipboardEvent, ClipboardState> {
   final ClipboardRepository _repository;
   final DetectCategoryUseCase _detectCategory = DetectCategoryUseCase();
+  final uuid_pkg.Uuid _uuid = const uuid_pkg.Uuid();
   Timer? _searchDebounceTimer;
   String _lastQuery = '';
 
@@ -21,6 +31,7 @@ class ClipboardBloc extends Bloc<ClipboardEvent, ClipboardState> {
     on<RestoreClipboardItem>(_onRestoreClipboardItem);
     on<ToggleBookmark>(_onToggleBookmark);
     on<SearchItems>(_onSearchItems);
+    on<_SearchResultsReady>(_onSearchResultsReady);
     on<ClearSearch>(_onClearSearch);
     on<ClearAllItems>(_onClearAllItems);
     on<UpdateStorageLimit>(_onUpdateStorageLimit);
@@ -66,6 +77,10 @@ class ClipboardBloc extends Bloc<ClipboardEvent, ClipboardState> {
     }
   }
 
+  String _generateHash(String content) {
+    return _uuid.v5(Namespace.url.value, content);
+  }
+
   Future<void> _onAddClipboardItem(
     AddClipboardItem event,
     Emitter<ClipboardState> emit,
@@ -74,19 +89,19 @@ class ClipboardBloc extends Bloc<ClipboardEvent, ClipboardState> {
     try {
       final now = DateTime.now().millisecondsSinceEpoch;
       final category = _detectCategory.call(event.content, event.isImage);
+      final contentHash = _generateHash(event.content);
 
       final item = ClipboardItem(
         content: event.content,
         contentType: event.isImage ? ContentType.image : ContentType.text,
         isImage: event.isImage,
         category: category,
+        contentHash: contentHash,
         createdAt: now,
         updatedAt: now,
       );
 
-      final existingItem = await _repository.getItemByHash(
-        item.contentHash ?? '',
-      );
+      final existingItem = await _repository.getItemByHash(contentHash);
 
       if (existingItem != null) {
         final updatedItem = existingItem.copyWith(
@@ -199,30 +214,30 @@ class ClipboardBloc extends Bloc<ClipboardEvent, ClipboardState> {
     if (event.query == _lastQuery) return;
     _lastQuery = event.query;
 
-    final completer = Completer<void>();
-
-    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () async {
-      try {
-        final results = await _repository.searchItems(event.query);
-        if (!isClosed) {
-          emit(state.copyWith(
-            isSearching: true,
-            searchQuery: event.query,
-            searchResults: results,
-          ));
-        }
-      } catch (e) {
-        if (!isClosed) {
-          emit(state.copyWith(
-            status: ClipboardLoadStatus.error,
-            errorMessage: e.toString(),
-          ));
-        }
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!isClosed) {
+        add(_SearchResultsReady(event.query));
       }
-      completer.complete();
     });
+  }
 
-    await completer.future;
+  Future<void> _onSearchResultsReady(
+    _SearchResultsReady event,
+    Emitter<ClipboardState> emit,
+  ) async {
+    try {
+      final results = await _repository.searchItems(event.query);
+      emit(state.copyWith(
+        isSearching: true,
+        searchQuery: event.query,
+        searchResults: results,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: ClipboardLoadStatus.error,
+        errorMessage: e.toString(),
+      ));
+    }
   }
 
   Future<void> _onClearSearch(

@@ -22,8 +22,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<ClipboardBloc>().add(const LoadRecentItems());
-    context.read<ClipboardBloc>().add(LoadBookmarkedItems());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ClipboardBloc>().add(const LoadRecentItems());
+      context.read<ClipboardBloc>().add(LoadBookmarkedItems());
+    });
   }
 
   @override
@@ -35,9 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.appName),
-      ),
+      appBar: AppBar(title: const Text(AppStrings.appName)),
       body: Column(
         children: [
           CustomSearchBar(
@@ -64,9 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: BlocBuilder<ClipboardBloc, ClipboardState>(
               builder: (context, state) {
                 if (state.status == ClipboardLoadStatus.loading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 final items = state.isSearching
@@ -111,7 +109,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         item: item,
                         onBookmark: () {
                           if (item.id != null) {
-                            context.read<ClipboardBloc>().add(ToggleBookmark(item.id!));
+                            context.read<ClipboardBloc>().add(
+                              ToggleBookmark(item.id!),
+                            );
                           }
                         },
                         onDelete: () {
@@ -155,14 +155,18 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              context.read<ClipboardBloc>().add(SoftDeleteClipboardItem(itemId));
+              context.read<ClipboardBloc>().add(
+                SoftDeleteClipboardItem(itemId),
+              );
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(AppStrings.itemDeleted),
                   action: SnackBarAction(
                     label: AppStrings.undo,
                     onPressed: () {
-                      context.read<ClipboardBloc>().add(RestoreClipboardItem(itemId));
+                      context.read<ClipboardBloc>().add(
+                        RestoreClipboardItem(itemId),
+                      );
                     },
                   ),
                 ),
