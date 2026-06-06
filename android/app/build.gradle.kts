@@ -45,3 +45,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // NotificationCompat / foreground-service helpers used by CaptureService.
+    implementation("androidx.core:core-ktx:1.13.1")
+}

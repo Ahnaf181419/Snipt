@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clip_repository.dart';
 import 'db/database.dart';
+import 'platform/capture_bridge.dart';
 
 /// Owns the singleton database for the app's lifetime.
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -12,6 +13,14 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 
 final clipRepositoryProvider = Provider<ClipRepository>((ref) {
   return ClipRepository(ref.watch(databaseProvider));
+});
+
+/// Connects the native capture engine to the repository. Reading this provider
+/// registers the inbound channel, so it must be touched once at app start.
+final captureBridgeProvider = Provider<CaptureBridge>((ref) {
+  final bridge = CaptureBridge(ref.watch(clipRepositoryProvider));
+  bridge.register();
+  return bridge;
 });
 
 /// Current search text. Empty string means "show full history".
