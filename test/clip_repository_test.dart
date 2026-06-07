@@ -47,6 +47,20 @@ void main() {
     expect(await repo.watchHistory().first, hasLength(1));
   });
 
+  test('re-capturing a deleted clip restores it (undo path)', () async {
+    final clip = await repo.capture(ev('restore me'));
+    await repo.softDelete(clip.id);
+    expect(await repo.watchHistory().first, isEmpty);
+
+    // Same content again — dedup hits the tombstoned row and must undelete it.
+    await repo.capture(ev('restore me'));
+    final history = await repo.watchHistory().first;
+    expect(history, hasLength(1));
+    expect(history.single.content, 'restore me');
+    // And it's searchable again.
+    expect(await repo.watchSearch('restore').first, hasLength(1));
+  });
+
   test('pin floats to the top and survives prune', () async {
     final keep = await repo.capture(ev('pinned item'));
     await repo.capture(ev('transient item'));

@@ -69,7 +69,9 @@ class ClipRepository {
           createdAt: now,
           updatedAt: now,
           usageCount: existing.usageCount + 1,
-          deletedAt: const Value.absent(),
+          // Value(null) clears any tombstone (undelete); Value.absent() would
+          // keep the row hidden when re-capturing previously deleted content.
+          deletedAt: const Value(null),
           sourceApp: Value(event.sourceApp ?? existing.sourceApp),
         );
         await _db.update(_db.clips).replace(refreshed);

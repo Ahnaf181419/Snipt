@@ -28,14 +28,21 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
     private var flutterApi: CaptureFlutterApi? = null
     private val pending = mutableListOf<CapturePayload>()
     private var clipboardCapturePending = false
+    // Set once Dart registers its handler; until then captures are queued so a
+    // cold-start share/process-text is never dropped.
+    private var dartReady = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         CaptureHostApi.setUp(messenger, this)
         flutterApi = CaptureFlutterApi(messenger)
-        flushPending()
         handleIntent(intent)
+    }
+
+    override fun flutterReady() {
+        dartReady = true
+        flushPending()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -76,7 +83,7 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
 
     private fun dispatch(payload: CapturePayload) {
         val api = flutterApi
-        if (api == null) {
+        if (!dartReady || api == null) {
             pending.add(payload)
         } else {
             api.onClipCaptured(payload) { /* fire and forget */ }

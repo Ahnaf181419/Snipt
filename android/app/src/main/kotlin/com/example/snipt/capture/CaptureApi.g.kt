@@ -293,6 +293,12 @@ private open class CaptureApiPigeonCodec : StandardMessageCodec() {
  * Generated interface from Pigeon that represents a handler of messages from Flutter.
  */
 interface CaptureHostApi {
+  /**
+   * Signals that the Dart [CaptureFlutterApi] handler is registered. Native
+   * queues captures that arrive before this (e.g. a cold-start share) and
+   * flushes them once called, so no capture is dropped during startup.
+   */
+  fun flutterReady()
   fun isServiceRunning(): Boolean
   fun startService()
   fun stopService()
@@ -312,6 +318,22 @@ interface CaptureHostApi {
     @JvmOverloads
     fun setUp(binaryMessenger: BinaryMessenger, api: CaptureHostApi?, messageChannelSuffix: String = "") {
       val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.snipt.CaptureHostApi.flutterReady$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.flutterReady()
+              listOf(null)
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
       run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.snipt.CaptureHostApi.isServiceRunning$separatedMessageChannelSuffix", codec)
         if (api != null) {

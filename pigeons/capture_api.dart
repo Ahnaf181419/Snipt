@@ -25,6 +25,11 @@ class CapturePayload {
 /// while the app holds focus, per Android 10+ restrictions).
 @HostApi()
 abstract class CaptureHostApi {
+  /// Signals that the Dart [CaptureFlutterApi] handler is registered. Native
+  /// queues captures that arrive before this (e.g. a cold-start share) and
+  /// flushes them once called, so no capture is dropped during startup.
+  void flutterReady();
+
   bool isServiceRunning();
   void startService();
   void stopService();

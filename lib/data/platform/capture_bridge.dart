@@ -17,8 +17,15 @@ class CaptureBridge extends CaptureFlutterApi {
   final ClipRepository _repo;
   final CaptureHostApi host;
 
-  /// Registers this object to receive native capture callbacks.
-  void register() => CaptureFlutterApi.setUp(this);
+  /// Registers this object to receive native capture callbacks, then tells the
+  /// native side Dart is ready so it can flush any captures queued during
+  /// startup (e.g. a cold-start share).
+  void register() {
+    CaptureFlutterApi.setUp(this);
+    // Best-effort: on platforms without the native engine (e.g. tests) this
+    // channel has no handler, so swallow the connection error.
+    unawaited(host.flutterReady().catchError((Object _) {}));
+  }
 
   @override
   void onClipCaptured(CapturePayload payload) {
