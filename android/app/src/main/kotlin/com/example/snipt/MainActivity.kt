@@ -53,9 +53,15 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && clipboardCapturePending) {
+        if (hasFocus) {
+            // Capture on every focus gain (open app, switch back, etc.). The
+            // repository's contentHash dedup prevents duplicate entries when
+            // the clipboard hasn't changed since last capture.
+            val wasPending = clipboardCapturePending
             clipboardCapturePending = false
-            readClipboardNow()?.let { dispatch(it.copy(source = CaptureSourceDto.TILE)) }
+            readClipboardNow()?.let { payload ->
+                dispatch(payload.copy(source = if (wasPending) CaptureSourceDto.TILE else CaptureSourceDto.MANUAL))
+            }
         }
     }
 
