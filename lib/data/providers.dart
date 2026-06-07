@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clip_repository.dart';
@@ -42,3 +43,23 @@ final clipListProvider = StreamProvider.autoDispose<List<Clip>>((ref) {
   final query = ref.watch(searchQueryProvider).trim();
   return query.isEmpty ? repo.watchHistory() : repo.watchSearch(query);
 });
+
+/// Mutations on a clip, shared by the list and detail screens.
+class ClipActions {
+  ClipActions(this._repo);
+
+  final ClipRepository _repo;
+
+  /// Re-copy to the system clipboard and float the entry back to the top.
+  Future<void> copy(Clip clip) async {
+    await Clipboard.setData(ClipboardData(text: clip.content));
+    await _repo.bumpUsage(clip.id);
+  }
+
+  Future<void> togglePin(Clip clip) => _repo.togglePin(clip.id, !clip.isPinned);
+
+  Future<void> delete(String id) => _repo.softDelete(id);
+}
+
+final clipActionsProvider =
+    Provider<ClipActions>((ref) => ClipActions(ref.watch(clipRepositoryProvider)));
