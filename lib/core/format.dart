@@ -1,6 +1,7 @@
 /// Compact, locale-agnostic "time ago" formatting for clip timestamps.
 String timeAgo(DateTime time, {DateTime? now}) {
   final delta = (now ?? DateTime.now()).difference(time);
+  if (delta.isNegative) return 'just now'; // clock skew guard
   if (delta.inSeconds < 60) return 'just now';
   if (delta.inMinutes < 60) return '${delta.inMinutes}m ago';
   if (delta.inHours < 24) return '${delta.inHours}h ago';

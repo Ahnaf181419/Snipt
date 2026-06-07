@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,11 +17,15 @@ class HistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  final _searchController = TextEditingController();
+  late final TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
+    // Restore any active search query so the text field matches the list state
+    // if the screen is rebuilt while a search is in progress.
+    _searchController =
+        TextEditingController(text: ref.read(searchQueryProvider));
     _runRetention();
   }
 
@@ -35,26 +38,26 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   /// Prune expired, non-pinned clips once per launch.
   Future<void> _runRetention() async {
     final settings = await ref.read(settingsControllerProvider.future);
+    if (!mounted) return;
     if (settings.retentionDays <= 0) return;
     final cutoff =
         DateTime.now().subtract(Duration(days: settings.retentionDays));
+    if (!mounted) return;
     await ref.read(clipRepositoryProvider).prune(cutoff);
   }
 
+  /// Reads the current clipboard via the native bridge (avoids duplicating the
+  /// same logic that lives in [CaptureBridge.captureFromClipboard]).
   Future<void> _captureFromClipboard() async {
     final messenger = ScaffoldMessenger.of(context);
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim();
-    if (text == null || text.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Clipboard is empty')),
-      );
-      return;
-    }
-    await ref.read(clipRepositoryProvider).capture(
-          CaptureEvent(content: text, source: CaptureSource.manual),
-        );
-    messenger.showSnackBar(const SnackBar(content: Text('Saved to history')));
+    final captured =
+        await ref.read(captureBridgeProvider).captureFromClipboard();
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(captured ? 'Saved to history' : 'Clipboard is empty'),
+      ),
+    );
   }
 
   Future<void> _copy(Clip clip) async {
@@ -85,6 +88,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final clips = ref.watch(clipListProvider);
+    final query = ref.watch(searchQueryProvider);
     final settings = ref.watch(settingsControllerProvider).value;
 
     return Scaffold(
@@ -133,7 +137,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             child: clips.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
-              data: (items) => _list(items),
+              data: (items) => _list(items, query),
             ),
           ),
         ],
@@ -141,11 +145,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _list(List<Clip> items) {
+  Widget _list(List<Clip> items, String query) {
     if (items.isEmpty) {
-      final searching = ref.read(searchQueryProvider).trim().isNotEmpty;
       return Center(
-        child: Text(searching ? 'No matches' : 'No clips yet'),
+        child: Text(query.trim().isNotEmpty ? 'No matches' : 'No clips yet'),
       );
     }
     return ListView.builder(

@@ -72,8 +72,16 @@ class SettingsController extends AsyncNotifier<AppSettings> {
   Future<AppSettings> build() => ref.read(settingsStoreProvider).read();
 
   Future<void> _update(AppSettings next) async {
+    // Optimistic update for instant UI response, but revert if the disk write
+    // fails so in-memory state and persisted state never diverge.
+    final previous = state;
     state = AsyncData(next);
-    await ref.read(settingsStoreProvider).write(next);
+    try {
+      await ref.read(settingsStoreProvider).write(next);
+    } catch (e, st) {
+      state = previous;
+      Error.throwWithStackTrace(e, st);
+    }
   }
 
   AppSettings get _current => state.value ?? const AppSettings();

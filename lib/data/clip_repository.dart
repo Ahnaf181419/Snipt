@@ -20,13 +20,15 @@ class ClipRepository {
   final AppDatabase _db;
   final Uuid _uuid;
 
-  /// Active history, newest first, pinned entries floated to the top.
+  /// Active history, most-recently-used first, pinned entries floated to top.
+  /// Sorted by [updatedAt] (not createdAt) so that copying a clip floats it
+  /// back to the top without corrupting the immutable "Saved" timestamp.
   Stream<List<Clip>> watchHistory({int limit = AppConstants.historyPageSize}) {
     final query = _db.select(_db.clips)
       ..where((t) => t.deletedAt.isNull())
       ..orderBy([
         (t) => OrderingTerm.desc(t.isPinned),
-        (t) => OrderingTerm.desc(t.createdAt),
+        (t) => OrderingTerm.desc(t.updatedAt),
       ])
       ..limit(limit);
     return query.watch();
@@ -42,7 +44,7 @@ class ClipRepository {
           'SELECT clips.* FROM clips '
           'JOIN clip_fts ON clip_fts.id = clips.id '
           'WHERE clip_fts MATCH ?1 AND clips.deleted_at IS NULL '
-          'ORDER BY clips.is_pinned DESC, clips.created_at DESC '
+          'ORDER BY clips.is_pinned DESC, clips.updated_at DESC '
           'LIMIT ?2',
           variables: [Variable.withString(match), Variable.withInt(limit)],
           readsFrom: {_db.clips},
@@ -55,6 +57,14 @@ class ClipRepository {
   /// existing row, which is refreshed and floated back to the top.
   Future<Clip> capture(CaptureEvent event) async {
     final content = event.content.trim();
+
+    // Hard cap: reject payloads that would bloat the DB and FTS index.
+    if (utf8.encode(content).length > AppConstants.maxClipBytes) {
+      return Future.error(
+        ArgumentError('Clip exceeds maxClipBytes (${AppConstants.maxClipBytes} bytes)'),
+      );
+    }
+
     final type = ClipType.classify(content);
     final hash = _hash(type, content);
     final now = DateTime.now();
@@ -65,8 +75,9 @@ class ClipRepository {
           .getSingleOrNull();
 
       if (existing != null) {
+        // Keep createdAt immutable — it represents the original capture time
+        // displayed as "Saved" in the detail screen. Only updatedAt moves.
         final refreshed = existing.copyWith(
-          createdAt: now,
           updatedAt: now,
           usageCount: existing.usageCount + 1,
           // Value(null) clears any tombstone (undelete); Value.absent() would
@@ -75,8 +86,9 @@ class ClipRepository {
           sourceApp: Value(event.sourceApp ?? existing.sourceApp),
         );
         await _db.update(_db.clips).replace(refreshed);
-        // A previously pruned duplicate would be gone from the index; re-add.
-        await _reindex(existing.id, content);
+        // Re-index using the stored content (not the event payload) to keep
+        // the FTS table consistent with what is actually in the clips row.
+        await _reindex(existing.id, existing.content);
         return refreshed;
       }
 
@@ -123,9 +135,8 @@ class ClipRepository {
   }
 
   /// Called when a clip is re-copied to the system clipboard from the app.
-  /// Uses the type-safe Drift API so reactive stream watchers are notified and
-  /// the DateTime is stored as milliseconds (not seconds, which would corrupt
-  /// the timestamp to ~1970 and cause the clip to be pruned immediately).
+  /// Updates updatedAt (to float the clip to top) but leaves createdAt intact
+  /// so the detail screen's "Saved" timestamp stays accurate.
   Future<void> bumpUsage(String id) async {
     final clip = await (_db.select(_db.clips)
           ..where((t) => t.id.equals(id)))
@@ -134,19 +145,21 @@ class ClipRepository {
     await (_db.update(_db.clips)..where((t) => t.id.equals(id))).write(
       ClipsCompanion(
         usageCount: Value(clip.usageCount + 1),
-        createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ),
     );
   }
 
-  /// Prune non-pinned clips last touched before [cutoff]. Returns rows removed.
+  /// Prune non-pinned, non-tombstoned clips not touched since [cutoff].
+  /// Returns rows removed. Already-tombstoned rows are excluded so sync
+  /// tombstones are not destroyed before a future sync peer can observe them.
   Future<int> prune(DateTime cutoff) async {
     return _db.transaction(() async {
       final victims = await (_db.select(_db.clips)
             ..where((t) =>
                 t.isPinned.equals(false) &
-                t.createdAt.isSmallerThanValue(cutoff)))
+                t.deletedAt.isNull() &
+                t.updatedAt.isSmallerThanValue(cutoff)))
           .get();
       if (victims.isEmpty) return 0;
       final ids = victims.map((c) => c.id).toList();
@@ -170,12 +183,15 @@ class ClipRepository {
       sha256.convert(utf8.encode('${type.index}:$content')).toString();
 
   /// Builds a safe FTS5 prefix query from free-form input, or null if empty.
+  /// Strips all FTS5 syntax characters to prevent query parse errors.
   String? _toFtsQuery(String raw) {
     final tokens = raw
         .toLowerCase()
         .split(RegExp(r'\s+'))
         .where((t) => t.isNotEmpty)
-        .map((t) => t.replaceAll('"', '')) // strip quotes to avoid syntax errs
+        // Strip all FTS5 operators/meta-chars — not just quotes — to prevent
+        // SQLite parse errors on input like "(test", "-word", "a^b", etc.
+        .map((t) => t.replaceAll(RegExp(r'["\(\)\^\-\*\\]'), ''))
         .where((t) => t.isNotEmpty)
         .map((t) => '"$t"*') // quoted prefix token
         .toList();

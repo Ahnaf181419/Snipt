@@ -1,8 +1,8 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clip_repository.dart';
 import 'db/database.dart';
+import 'platform/capture_api.g.dart';
 import 'platform/capture_bridge.dart';
 
 /// Owns the singleton database for the app's lifetime.
@@ -21,6 +21,9 @@ final clipRepositoryProvider = Provider<ClipRepository>((ref) {
 final captureBridgeProvider = Provider<CaptureBridge>((ref) {
   final bridge = CaptureBridge(ref.watch(clipRepositoryProvider));
   bridge.register();
+  // Unregister the Pigeon handler when the provider is disposed (hot-restart,
+  // test teardown) so stale handlers don't deliver to a dead repository.
+  ref.onDispose(() => CaptureFlutterApi.setUp(null));
   return bridge;
 });
 
@@ -46,13 +49,17 @@ final clipListProvider = StreamProvider.autoDispose<List<Clip>>((ref) {
 
 /// Mutations on a clip, shared by the list and detail screens.
 class ClipActions {
-  ClipActions(this._repo);
+  ClipActions(this._repo, this._bridge);
 
   final ClipRepository _repo;
+  final CaptureBridge _bridge;
 
   /// Re-copy to the system clipboard and float the entry back to the top.
+  /// Goes through the Pigeon channel so the native side can update its
+  /// lastFocusDispatchedContent guard, preventing a double usageCount
+  /// increment when the user returns to snipt after copying from within it.
   Future<void> copy(Clip clip) async {
-    await Clipboard.setData(ClipboardData(text: clip.content));
+    await _bridge.host.copyToClipboard(clip.content);
     await _repo.bumpUsage(clip.id);
   }
 
@@ -61,5 +68,7 @@ class ClipActions {
   Future<void> delete(String id) => _repo.softDelete(id);
 }
 
-final clipActionsProvider =
-    Provider<ClipActions>((ref) => ClipActions(ref.watch(clipRepositoryProvider)));
+final clipActionsProvider = Provider<ClipActions>((ref) => ClipActions(
+      ref.watch(clipRepositoryProvider),
+      ref.watch(captureBridgeProvider),
+    ));

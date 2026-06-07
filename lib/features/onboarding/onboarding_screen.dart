@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
 import '../../data/settings.dart';
@@ -72,7 +73,10 @@ class OnboardingScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             TextButton(
-              onPressed: () => controller.completeOnboarding(),
+              onPressed: () async {
+                await controller.completeOnboarding();
+                if (context.mounted) context.go('/');
+              },
               child: const Text('Continue to history'),
             ),
           ],

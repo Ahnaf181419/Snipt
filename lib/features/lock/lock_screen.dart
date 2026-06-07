@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
@@ -15,6 +16,8 @@ class LockScreen extends ConsumerStatefulWidget {
 class _LockScreenState extends ConsumerState<LockScreen> {
   bool _authenticating = false;
   String? _error;
+  // Set when biometrics are unavailable/unenrolled so the user isn't stuck.
+  bool _showDisableLock = false;
 
   @override
   void initState() {
@@ -27,6 +30,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     setState(() {
       _authenticating = true;
       _error = null;
+      _showDisableLock = false;
     });
     try {
       final ok = await LocalAuthentication().authenticate(
@@ -36,12 +40,34 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       if (ok && mounted) {
         ref.read(sessionUnlockedProvider.notifier).state = true;
       } else if (mounted) {
-        setState(() => _error = 'Authentication failed');
+        setState(() => _error = 'Authentication failed. Try again.');
+      }
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      // These codes mean no biometrics are set up on the device. Show an
+      // escape hatch so the user is never permanently locked out of their data.
+      const unrecoverable = {'NotEnrolled', 'notEnrolled', 'NotAvailable'};
+      if (unrecoverable.contains(e.code)) {
+        setState(() {
+          _error = 'No biometrics available on this device.';
+          _showDisableLock = true;
+        });
+      } else {
+        setState(() => _error = 'Authentication error: ${e.message}');
       }
     } on Exception catch (e) {
       if (mounted) setState(() => _error = '$e');
     } finally {
       if (mounted) setState(() => _authenticating = false);
+    }
+  }
+
+  Future<void> _disableLock() async {
+    await ref
+        .read(settingsControllerProvider.notifier)
+        .setLockEnabled(false);
+    if (mounted) {
+      ref.read(sessionUnlockedProvider.notifier).state = true;
     }
   }
 
@@ -59,7 +85,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 style: Theme.of(context).textTheme.titleLarge),
             if (_error != null) ...[
               const SizedBox(height: 8),
-              Text(_error!, style: TextStyle(color: scheme.error)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: scheme.error),
+                ),
+              ),
             ],
             const SizedBox(height: 24),
             FilledButton.icon(
@@ -67,6 +100,13 @@ class _LockScreenState extends ConsumerState<LockScreen> {
               icon: const Icon(Icons.fingerprint),
               label: const Text('Unlock'),
             ),
+            if (_showDisableLock) ...[
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: _disableLock,
+                child: const Text('Disable app lock'),
+              ),
+            ],
           ],
         ),
       ),

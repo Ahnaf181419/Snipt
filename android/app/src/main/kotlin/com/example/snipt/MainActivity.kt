@@ -149,6 +149,10 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
     override fun copyToClipboard(text: String) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("snipt", text))
+        // Record what we just wrote so the focus-gain handler doesn't
+        // re-dispatch (and double-count usageCount) when the user returns
+        // to snipt after copying a clip from within the app.
+        lastFocusDispatchedContent = text
     }
 
     // endregion
