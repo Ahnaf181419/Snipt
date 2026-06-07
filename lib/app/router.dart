@@ -29,6 +29,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/detail',
       name: 'detail',
+      // Redirect instead of crashing when `extra` is absent (e.g. deep link or
+      // direct URL navigation without a Clip object).
+      redirect: (context, state) =>
+          state.extra is Clip ? null : '/',
       builder: (context, state) => ClipDetailScreen(clip: state.extra! as Clip),
     ),
   ],

@@ -123,11 +123,20 @@ class ClipRepository {
   }
 
   /// Called when a clip is re-copied to the system clipboard from the app.
+  /// Uses the type-safe Drift API so reactive stream watchers are notified and
+  /// the DateTime is stored as milliseconds (not seconds, which would corrupt
+  /// the timestamp to ~1970 and cause the clip to be pruned immediately).
   Future<void> bumpUsage(String id) async {
-    await _db.customStatement(
-      'UPDATE clips SET usage_count = usage_count + 1, '
-      'created_at = ?1, updated_at = ?1 WHERE id = ?2',
-      [DateTime.now().millisecondsSinceEpoch ~/ 1000, id],
+    final clip = await (_db.select(_db.clips)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (clip == null) return;
+    await (_db.update(_db.clips)..where((t) => t.id.equals(id))).write(
+      ClipsCompanion(
+        usageCount: Value(clip.usageCount + 1),
+        createdAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ),
     );
   }
 

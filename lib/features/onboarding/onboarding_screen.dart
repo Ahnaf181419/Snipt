@@ -53,8 +53,15 @@ class OnboardingScreen extends ConsumerWidget {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Enable capture service'),
               onPressed: () async {
-                await bridge.host.startService();
-                await controller.setCaptureServiceEnabled(true);
+                try {
+                  await bridge.host.startService();
+                  await controller.setCaptureServiceEnabled(true);
+                } catch (_) {
+                  // Silently continue — service can be re-enabled from Settings.
+                  // Most common cause: POST_NOTIFICATIONS not yet granted on
+                  // Android 13+ (the service still starts but without a visible
+                  // notification until the permission is granted).
+                }
               },
             ),
             const SizedBox(height: 8),

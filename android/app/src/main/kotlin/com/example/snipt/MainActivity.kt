@@ -31,6 +31,10 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
     // Set once Dart registers its handler; until then captures are queued so a
     // cold-start share/process-text is never dropped.
     private var dartReady = false
+    // Track the last content dispatched via the focus-gain path so we don't
+    // re-dispatch (and double-count usageCount) every time a dialog closes or
+    // a permission prompt returns while the clipboard hasn't changed.
+    private var lastFocusDispatchedContent: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -53,16 +57,19 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            // Capture on every focus gain (open app, switch back, etc.). The
-            // repository's contentHash dedup prevents duplicate entries when
-            // the clipboard hasn't changed since last capture.
-            val wasPending = clipboardCapturePending
-            clipboardCapturePending = false
-            readClipboardNow()?.let { payload ->
-                dispatch(payload.copy(source = if (wasPending) CaptureSourceDto.TILE else CaptureSourceDto.MANUAL))
-            }
-        }
+        if (!hasFocus) return
+        val wasPending = clipboardCapturePending
+        clipboardCapturePending = false
+        val payload = readClipboardNow() ?: return
+        // Skip focus-gain captures when the clipboard hasn't changed. This
+        // prevents: (a) spamming dispatch on every dialog dismiss / permission
+        // return, and (b) double-incrementing usageCount when the user copies
+        // from within snipt and then returns (bumpUsage already counted it).
+        // Explicit tile/notification captures (wasPending=true) bypass this
+        // guard so a deliberate user action is never silently dropped.
+        if (!wasPending && payload.content == lastFocusDispatchedContent) return
+        lastFocusDispatchedContent = payload.content
+        dispatch(payload.copy(source = if (wasPending) CaptureSourceDto.TILE else CaptureSourceDto.MANUAL))
     }
 
     private fun handleIntent(intent: Intent?) {

@@ -5,9 +5,14 @@ import 'package:local_auth/local_auth.dart';
 import '../../data/providers.dart';
 import '../../data/settings.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const _retentionOptions = {
     7: '7 days',
     30: '30 days',
@@ -16,10 +21,75 @@ class SettingsScreen extends ConsumerWidget {
   };
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    // Sync the stored captureServiceEnabled flag with the actual running state
+    // so the switch isn't stale after the OS kills the service.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncServiceState());
+  }
+
+  Future<void> _syncServiceState() async {
+    final bridge = ref.read(captureBridgeProvider);
+    final controller = ref.read(settingsControllerProvider.notifier);
+    final settings = ref.read(settingsControllerProvider).value;
+    if (settings == null) return;
+    try {
+      final running = await bridge.host.isServiceRunning();
+      if (running != settings.captureServiceEnabled) {
+        await controller.setCaptureServiceEnabled(running);
+      }
+    } catch (_) {
+      // Platform not available in tests — ignore.
+    }
+  }
+
+  Future<void> _toggleService(bool on) async {
+    final bridge = ref.read(captureBridgeProvider);
+    final controller = ref.read(settingsControllerProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (on) {
+        await bridge.host.startService();
+      } else {
+        await bridge.host.stopService();
+      }
+      await controller.setCaptureServiceEnabled(on);
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not ${on ? 'start' : 'stop'} service: $e')),
+      );
+    }
+  }
+
+  Future<void> _toggleLock(bool enable) async {
+    final controller = ref.read(settingsControllerProvider.notifier);
+    if (!enable) {
+      await controller.setLockEnabled(false);
+      return;
+    }
+    final auth = LocalAuthentication();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final canCheck = await auth.isDeviceSupported();
+      if (!canCheck) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('No device lock available')),
+        );
+        return;
+      }
+      final ok = await auth.authenticate(
+        localizedReason: 'Confirm to enable app lock',
+      );
+      if (ok) await controller.setLockEnabled(true);
+    } on Exception catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Lock unavailable: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings =
         ref.watch(settingsControllerProvider).value ?? const AppSettings();
-    final controller = ref.read(settingsControllerProvider.notifier);
     final bridge = ref.read(captureBridgeProvider);
 
     return Scaffold(
@@ -33,14 +103,7 @@ class SettingsScreen extends ConsumerWidget {
               'Runs a persistent notification with a one-tap Capture action.',
             ),
             value: settings.captureServiceEnabled,
-            onChanged: (on) async {
-              if (on) {
-                await bridge.host.startService();
-              } else {
-                await bridge.host.stopService();
-              }
-              await controller.setCaptureServiceEnabled(on);
-            },
+            onChanged: _toggleService,
           ),
           ListTile(
             title: const Text('Floating bubble permission'),
@@ -53,7 +116,7 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('App lock'),
             subtitle: const Text('Require biometrics / device PIN to open.'),
             value: settings.lockEnabled,
-            onChanged: (on) => _toggleLock(context, controller, ref, on),
+            onChanged: _toggleLock,
           ),
           ListTile(
             title: const Text('Keep history for'),
@@ -61,7 +124,11 @@ class SettingsScreen extends ConsumerWidget {
             trailing: DropdownButton<int>(
               value: settings.retentionDays,
               onChanged: (v) {
-                if (v != null) controller.setRetentionDays(v);
+                if (v != null) {
+                  ref
+                      .read(settingsControllerProvider.notifier)
+                      .setRetentionDays(v);
+                }
               },
               items: [
                 for (final e in _retentionOptions.entries)
@@ -84,35 +151,6 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _toggleLock(
-    BuildContext context,
-    SettingsController controller,
-    WidgetRef ref,
-    bool enable,
-  ) async {
-    if (!enable) {
-      await controller.setLockEnabled(false);
-      return;
-    }
-    final auth = LocalAuthentication();
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final canCheck = await auth.isDeviceSupported();
-      if (!canCheck) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('No device lock available')),
-        );
-        return;
-      }
-      final ok = await auth.authenticate(
-        localizedReason: 'Confirm to enable app lock',
-      );
-      if (ok) await controller.setLockEnabled(true);
-    } on Exception catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Lock unavailable: $e')));
-    }
   }
 }
 
