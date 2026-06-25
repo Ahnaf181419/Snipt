@@ -40,6 +40,20 @@ android {
         versionName = flutter.versionName
     }
 
+    // When building APKs (not AABs), split per CPU architecture so each
+    // download is ~3x smaller. AABs handle this automatically via Play Store
+    // dynamic delivery, so we only enable splits for the assemble variant.
+    if (gradle.startParameter.taskNames.any { it.contains("assemble") }) {
+        splits {
+            abi {
+                isEnable = true
+                reset()
+                include("armeabi-v7a", "arm64-v8a", "x86_64")
+                isUniversalApk = false
+            }
+        }
+    }
+
     signingConfigs {
         create("release") {
             keystoreProperties["keyAlias"]?.let { keyAlias = it as String }
