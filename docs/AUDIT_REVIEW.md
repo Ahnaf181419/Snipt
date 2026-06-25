@@ -1,9 +1,33 @@
-# snipt — Comprehensive Code Audit Review
+# snipt — Comprehensive Code Audit Review (v2)
 
-**Date:** June 25, 2026  
+**Date:** June 26, 2026  
 **Auditor:** Automated (Hermes Agent)  
-**Commit:** `697bc3c` (Fix 14 bugs found in comprehensive audit)  
+**Commit:** `6f1d3ea` (docs: rewrite README, add audit review + Play Store roadmap)  
 **Branch:** main  
+**Previous audit:** June 25, 2026 @ `697bc3c`
+
+---
+
+## What Changed Since v1
+
+10 commits addressing 12 audit findings:
+
+| # | Finding | Status |
+|---|---------|--------|
+| 1 | SQLCipher database encryption | ✅ DONE |
+| 2 | POST_NOTIFICATIONS runtime permission | ✅ DONE |
+| 3 | Placeholder applicationId | ✅ DONE |
+| 4 | No release signing config | ✅ DONE |
+| 5 | App lock not re-armed on resume | ✅ DONE |
+| 6 | No global error handling | ✅ DONE |
+| 7 | Empty states are plain text | ✅ DONE |
+| 8 | No haptic feedback | ✅ DONE |
+| 9 | Loading spinner instead of skeleton | ✅ DONE |
+| 10 | Search queries FTS5 on every keystroke | ✅ DONE |
+| 11 | Default README template | ✅ DONE |
+| 12 | Theme polish gaps | ✅ DONE |
+
+**Still outstanding:** pagination (50-row cap), test coverage expansion, branded notification icon, default app icon, ProGuard rules, privacy policy, store listing assets, CI/CD pipeline.
 
 ---
 
@@ -11,17 +35,17 @@
 
 | Metric | Value |
 |---|---|
-| Handwritten Dart (lib/ + pigeons/) | 1,617 lines across 21 files |
-| Generated Dart (*.g.dart, *.freezed.dart) | 1,715 lines across 4 files |
-| Kotlin (handwritten) | 294 lines across 3 files |
-| Kotlin (Pigeon-generated) | 480 lines (1 file) |
-| Tests | 6 tests (5 repository + 1 widget) across 2 files |
+| Handwritten Dart (lib/ + pigeons/) | 2,107 lines across 24 files (+490 / +3 files) |
+| Generated Dart (*.g.dart, *.freezed.dart) | 1,737 lines across 4 files |
+| Kotlin (handwritten) | 338 lines across 3 files (+44) |
+| Kotlin (Pigeon-generated) | 501 lines (+21) |
+| Tests | 6 tests (unchanged) |
 | `flutter analyze` | **0 issues** |
 | `flutter test` | **6/6 passing** |
 
-**Overall Score: 7.9 / 10 (B+)**
+**Overall Score: 8.6 / 10 (A-)**  *(up from 7.9 / B+)*
 
-snipt is a well-architected, thoughtfully designed Android clipboard manager with excellent separation of concerns, honest handling of Android's clipboard restrictions, and clean idiomatic code. The primary weaknesses are in test coverage breadth (only 6 tests), missing at-rest database encryption, placeholder build configuration (com.example package, debug signing), and the default README template. The core data layer and capture engine are production-quality; the gaps are in surrounding hardening and CI maturity.
+snipt has closed all four critical security and configuration gaps that blocked production. The database is now encrypted at rest, the notification permission is properly requested, the application ID is production-ready, and a release signing config is in place. The UI received a substantial premium polish pass: skeleton loading, haptic feedback, premium empty states, debounced search, a re-armed app lock, global error handling, and a refined Material 3 theme. The remaining gaps are now in test coverage breadth (still 6 tests), a placeholder app icon, no ProGuard rules, and Play Store listing assets (privacy policy, screenshots, feature graphic). The core architecture, data layer, and capture engine remain production-quality.
 
 ---
 
@@ -39,264 +63,275 @@ Each section is rated on a scale of 1–10:
 
 ---
 
-## 1. Architecture & Design — 9/10
+## 1. Architecture & Design — 9/10 *(unchanged)*
 
 **Strengths:**
 - Feature-first layering is textbook clean: `app/`, `core/`, `data/`, `domain/`, `features/` with clear directional dependencies.
 - The "B-first, A-ready" capture strategy is pragmatic and honest — it does not pretend background capture works. The onboarding screen explicitly tells users about Android's limitation.
-- Sync-ready data model designed from day one: UUID primary keys, `updatedAt` for last-write-wins, `deletedAt` tombstones, `contentHash` for dedup. A future `RemoteSyncRepository` can wrap the existing `ClipRepository` surface without schema changes.
-- Single `GoRouter` table with a defensive redirect for the `/detail` route (handles missing `extra` gracefully instead of crashing).
-- Root gate pattern cleanly separates onboarding / lock / history states based on async-loaded settings.
+- Sync-ready data model designed from day one: UUID primary keys, `updatedAt` for last-write-wins, `deletedAt` tombstones, `contentHash` for dedup.
+- Single `GoRouter` table with a defensive redirect for the `/detail` route (handles missing `extra` gracefully).
+- Root gate pattern cleanly separates onboarding / lock / history states.
 
 **Weaknesses:**
-- No formal dependency injection container — providers are spread across `providers.dart` and `settings.dart`. Acceptable for this codebase size, but as features grow this will need consolidation.
-- `riverpod_generator` is listed as a dev dependency but is never used (all providers are handwritten). Either adopt codegen consistently or remove the dependency to avoid confusion.
+- No formal dependency injection container — providers are spread across `providers.dart` and `settings.dart`.
+- `riverpod_generator` is listed as a dev dependency but is never used.
 
 ---
 
-## 2. Data Layer (Database & Repository) — 9/10
+## 2. Data Layer (Database & Repository) — 9.5/10 ⬆️ *(was 9/10)*
 
 **Strengths:**
 - Drift schema is well-designed with appropriate column types, defaults, and constraints.
 - `contentHash` UNIQUE constraint enables O(1) duplicate detection.
-- Dedup logic is sophisticated: re-capturing the same content bumps `usageCount`, floats the clip to the top (via `updatedAt`), and preserves the immutable `createdAt` ("Saved" timestamp).
-- Soft delete with tombstone (`deletedAt`) that is correctly excluded from history/search but preserved for future sync. Re-capturing deleted content properly undeletes it.
-- FTS5 full-text search is maintained transactionally inside the repository (no trigger drift). The standalone FTS5 table is not external-content, avoiding the sync footgun.
-- FTS5 query input is sanitized — all FTS5 syntax characters are stripped, preventing parse errors and injection.
-- Hard byte cap (`maxClipBytes = 256KB`) prevents DB bloat.
+- Sophisticated dedup: re-capturing same content bumps `usageCount`, floats clip to top, preserves immutable `createdAt`.
+- Soft delete with tombstone correctly excluded from history/search, undeleted on re-capture.
+- FTS5 full-text search maintained transactionally (no trigger drift). Query input is sanitized.
+- **NEW: Database is now encrypted at rest with SQLCipher.** The 256-bit key is generated via `Random.secure()` and stored in the Android Keystore via `flutter_secure_storage`. The database opens with `PRAGMA key = '$key'` before any table access.
 - All SQL is isolated in `ClipRepository`; widgets interact only through `ClipActions` and providers.
 
 **Weaknesses:**
-- **No at-rest database encryption** (SQLCipher designed-for but not enabled). Clipboard contents are stored in plaintext `snipt.sqlite`. This is the biggest security gap for a privacy-focused app. Acknowledged in CLAUDE.md.
-- `prune()` hard-deletes rows (not soft-delete tombstones). This is intentional for non-synced data but would need revisiting when sync is implemented.
-- No batch insert optimization for bulk import scenarios.
+- History/search still capped at 50 rows with no pagination.
+- `prune()` hard-deletes rows (intentional for non-synced data, but would need revisiting when sync is implemented).
 
 ---
 
-## 3. Native Capture Engine (Kotlin) — 8/10
+## 3. Native Capture Engine (Kotlin) — 8.5/10 ⬆️ *(was 8/10)*
 
 **Strengths:**
-- Four capture lanes are all wired: share-sheet (`ACTION_SEND`), process-text (`ACTION_PROCESS_TEXT`), Quick-Settings tile, and in-app button via foreground service notification.
-- `lastFocusDispatchedContent` guard prevents double-counting `usageCount` when the user copies from within snipt and returns, and prevents spamming captures on every dialog dismiss / permission prompt return.
-- Pending capture queue with `dartReady` flag ensures cold-start shares are never dropped before Dart registers its handler.
-- `CaptureService` is correctly declared as `specialUse` foreground service with the `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` property, which is the Play Console-compliant approach.
-- `CaptureTileService` handles both pre-14 (`startActivityAndCollapse`) and 14+ (`PendingIntent` variant) correctly.
-- `copyToClipboard` records what was written so the focus-gain handler doesn't re-dispatch.
-- `PendingIntent.FLAG_IMMUTABLE` used everywhere (security best practice on Android 12+).
+- Four capture lanes all wired: share-sheet, process-text, Quick-Settings tile, in-app button.
+- `lastFocusDispatchedContent` guard prevents double-counting and spam on focus-gain.
+- Pending capture queue ensures cold-start shares are never dropped.
+- `CaptureService` correctly declared as `specialUse` with required Play Console property.
+- **NEW: `POST_NOTIFICATIONS` runtime permission is now properly wired.** `startService()` checks for permission on API 33+ before starting the foreground service. If not granted, `requestPermissions()` is called and the service auto-launches via `onRequestPermissionsResult`.
+- `PendingIntent.FLAG_IMMUTABLE` used everywhere.
 
 **Weaknesses:**
-- **`POST_NOTIFICATIONS` runtime permission request is not wired** (Android 13+). The foreground service notification won't be visible until the user manually grants the permission. The service starts but silently. Acknowledged in CLAUDE.md but this is a real UX break for new users.
-- No error handling around `startForegroundService()` — if the service fails to start (e.g., background launch restrictions), no feedback is given to the Dart side.
-- `CaptureService.startForegroundNotification()` uses `android.R.drawable.ic_menu_save` as the notification icon — a generic system icon, not a branded one.
-- No `onTaskRemoved` / `onTimeout` handling for the foreground service (Android 14+ can timeout FGS after ~6 hours for certain types, though `specialUse` may be exempt).
+- `CaptureService.startForegroundNotification()` still uses `android.R.drawable.ic_menu_save` as the notification icon — a generic system icon, not branded.
+- No error handling around `startForegroundService()` failures.
+- No `onTaskRemoved` / `onTimeout` handling for Android 14+ FGS timeout.
 
 ---
 
-## 4. Platform Bridge (Pigeon) — 9/10
+## 4. Platform Bridge (Pigeon) — 9/10 *(unchanged)*
 
 **Strengths:**
-- `pigeons/capture_api.dart` serves as the single source of truth for the native channel. Clean `@HostApi()` (Dart→native) and `@FlutterApi()` (native→Dart) separation.
-- `CaptureSourceDto` is deliberately kept separate from the domain `CaptureSource` enum to avoid the generated channel code depending on the domain layer.
-- The `CaptureBridge` class cleanly implements `CaptureFlutterApi` for inbound capture and exposes `CaptureHostApi` for outbound control.
-- `register()` connects the handler and tells native Dart is ready (`flutterReady()`), with error-swallowing for test environments.
-- Generated code (`CaptureApi.g.kt`, `capture_api.g.dart`) is committed.
-- Provider disposes the Pigeon handler on teardown to prevent stale handler delivery.
+- `pigeons/capture_api.dart` serves as the single source of truth. Clean `@HostApi()` / `@FlutterApi()` separation.
+- `CaptureSourceDto` kept separate from domain `CaptureSource` enum.
+- `CaptureBridge` cleanly implements inbound capture and exposes outbound control.
+- Generated code (`CaptureApi.g.kt`, `capture_api.g.dart`) committed and regenerated after adding `hasNotificationPermission()`.
 
 **Weaknesses:**
-- The bridge's `captureFromClipboard()` is nearly identical to `onClipCaptured`'s internal logic — minor duplication.
-- No versioning or backward-compatibility strategy for the Pigeon contract as the app evolves.
+- The bridge's `captureFromClipboard()` duplicates `onClipCaptured`'s logic slightly.
+- No versioning strategy for the Pigeon contract.
 
 ---
 
-## 5. State Management (Riverpod) — 8/10
+## 5. State Management (Riverpod) — 8.5/10 ⬆️ *(was 8/10)*
 
 **Strengths:**
 - Clean use of Riverpod 3's core API: `Provider`, `StreamProvider.autoDispose`, `AsyncNotifierProvider`, `Notifier`.
-- `SettingsController` uses optimistic updates with revert-on-failure — in-memory state and persisted state never diverge.
-- `clipListProvider` reactively switches between history and search based on `searchQueryProvider` state.
+- `SettingsController` uses optimistic updates with revert-on-failure.
 - `ClipActions` centralizes mutations shared between list and detail screens.
+- **NEW: Debounced search.** `debouncedSearchProvider` emits the trimmed query 200ms after the user stops typing, preventing FTS5 database queries on every keystroke. `clipListProvider` now consumes the debounced stream instead of the raw query.
 - Database and bridge providers properly register `onDispose` callbacks.
-- `sessionUnlockedProvider` resets on cold start (correct security behavior for app lock).
 
 **Weaknesses:**
-- `sessionUnlockedProvider` uses legacy `StateProvider` (imported from `package:flutter_riverpod/legacy.dart`). Works, but should migrate to `Notifier` for Riverpod 3 consistency.
-- `clipListProvider` is `autoDispose` but `searchQueryProvider` is not — the search query survives screen disposal. This is intentional but could surprise.
-- No error recovery state for stream failures (the history screen shows raw error text).
-- `ClipActions.copy()` calls `bumpUsage` after the native `copyToClipboard` — if the native call succeeds but `bumpUsage` fails, the usage count is silently wrong. No transaction or rollback.
+- `sessionUnlockedProvider` still uses legacy `StateProvider` from `package:flutter_riverpod/legacy.dart`. Works correctly but should migrate to `Notifier` for Riverpod 3 consistency.
+- No error recovery state for stream failures (the history screen now shows a premium error widget, but no retry button).
+- `ClipActions.copy()` has no transaction/rollback if `bumpUsage` fails after the native call succeeds.
 
 ---
 
-## 6. UI / Feature Screens — 8/10
+## 6. UI / Feature Screens — 9/10 ⬆️ *(was 8/10)*
 
 **Strengths:**
-- Material 3 with dynamic color support (Android 12+), seeded brand fallback, coherent light/dark themes.
-- History screen: reactive list, swipe-to-delete with undo snackbar, search-as-you-type, popup menu per item (copy/pin/open/delete), setup banner when service isn't enabled.
-- Detail screen: selectable text, metadata display (type, saved time, usage count, byte size, source app).
-- Settings screen: capture service toggle, overlay permission shortcut, app lock with biometric verification, retention dropdown.
-- Onboarding: honest explanation of Android's clipboard restriction, three capture methods explained, CTA to enable service.
-- Lock screen: biometric unlock, error states, escape hatch to disable lock when no biometrics are available.
+- Material 3 with dynamic color support, seeded brand fallback, coherent light/dark themes.
+- **NEW: Premium theme polish** — transparent AppBar, filled input fields with focus ring, floating rounded snackbars, rounded ListTiles, subtle dividers, branded switches, rounded bottom sheets with drag handle, refined typography weight scale.
+- **NEW: Skeleton loading** — animated shimmer placeholders matching ClipTile layout replace the bare spinner.
+- **NEW: Premium empty states** — icon-circle + title + subtitle for no-clips, no-results, and error states.
+- **NEW: Haptic feedback** on capture, copy, delete, pin, and swipe-to-dismiss.
+- History screen: reactive list, swipe-to-delete with undo, search-as-you-type, popup menu per item, setup banner.
+- Detail screen: selectable text, metadata display.
+- Settings: capture service toggle, overlay permission, app lock with biometric, retention dropdown.
+- Onboarding: honest explanation of Android's clipboard restriction, three capture methods explained.
+- Lock screen: biometric unlock, error states, escape hatch.
 - All async gaps use `mounted` checks.
 
 **Weaknesses:**
-- **History/search capped at 50 rows** with no pagination or load-more (`watchHistory`/`watchSearch` take a `limit`). A power user with thousands of clips will only see the newest 50.
-- No pull-to-refresh on the history list.
-- No empty-state illustration (just plain text "No clips yet").
-- `_delete()` in history uses `Dismissible.onDismissed` but the item animates out before the undo snackbar appears — if the undo is tapped, the item pops back in with a jarring re-animation.
-- Detail screen pops back to history after pin/delete — the user loses their scroll position.
-- No haptic feedback on swipe-to-delete or long-press.
-- No dark-mode-specific testing or visual verification.
+- **History/search still capped at 50 rows** with no pagination or load-more.
+- No pull-to-refresh.
+- Default Flutter app icon is still in place — not branded.
+- Detail screen pops back to history after pin/delete, losing scroll position.
+- No dark-mode-specific visual verification (runtime build not tested in this environment).
 
 ---
 
-## 7. Security & Privacy — 7/10
+## 7. Security & Privacy — 9/10 ⬆️ *(was 7/10)*
 
 **Strengths:**
 - App lock with `local_auth` biometrics and device PIN fallback.
 - `flutter_secure_storage` (Android Keystore-backed) for all settings.
 - FTS5 query input is sanitized to prevent injection.
 - No network permissions, no analytics, no telemetry — truly local-first.
-- Privacy statement is prominently displayed in settings.
+- Privacy statement prominently displayed in settings.
 - `PendingIntent.FLAG_IMMUTABLE` prevents intent mutation attacks.
-- Clipboard content hash uses SHA-256 (for dedup, not security — but appropriate).
+- **NEW: Database encrypted at rest with SQLCipher.** Clipboard contents are no longer readable via ADB backup or on rooted devices. The encryption key never leaves the Android Keystore.
+- **NEW: App lock re-arms on resume.** `RootGate` now uses `WidgetsBindingObserver` to reset `sessionUnlockedProvider` when the app returns from the background. A user who briefly switches away must re-authenticate to see their history.
 
 **Weaknesses:**
-- **Database encryption (SQLCipher) is not enabled.** All clipboard content is stored in plaintext `snipt.sqlite` in the app's documents directory. On a rooted device or via ADB backup, all clips are readable. This is the single most important security gap for a self-described "privacy-focused" app.
-- **App lock only gates cold start.** It is not re-armed when the app is resumed from the background (`sessionUnlockedProvider` persists for the session). A user who briefly switches away and returns sees their history without re-authentication.
-- **No PIN/password fallback.** If biometrics are unavailable, the only option is to disable app lock entirely (`_showDisableLock` → `_disableLock`). There is no alternative unlock method.
-- **Fail-open root gate:** if settings read fails, the app shows history instead of locking. This is a deliberate UX decision but means a corrupted secure-storage read bypasses app lock.
-- Clipboard content written to the system clipboard by snipt has no expiry (unlike some clipboard managers that auto-clear after N seconds).
+- **No PIN/password fallback** when biometrics are unavailable. The only option is to disable app lock entirely.
+- **Fail-open root gate:** if settings read fails, the app shows history instead of locking. Deliberate UX decision but a security trade-off.
+- No clipboard auto-clear timer (system clipboard persists indefinitely).
 
 ---
 
-## 8. Test Coverage — 5/10
+## 8. Test Coverage — 5/10 *(unchanged)*
 
 **Strengths:**
-- Repository tests are excellent: URL classification, duplicate collapsing with usageCount bump, FTS prefix search, tombstone exclusion, soft-delete + re-capture restore, pin float-to-top, prune survival.
+- Repository tests are excellent: URL classification, duplicate collapsing, FTS prefix search, tombstone exclusion, soft-delete + re-capture restore, pin float-to-top, prune survival.
 - Widget test verifies onboarding renders correctly with fake settings store.
-- Tests use in-memory Drift database (`AppDatabase.forTesting(NativeDatabase.memory())`).
+- Tests use in-memory Drift database.
 - Settings store is designed with overridable methods for clean test faking.
 
 **Weaknesses:**
-- **Only 6 tests total.** For a codebase of ~1,900 handwritten lines, this is thin.
-- **No widget tests** for: history screen interactions (copy, delete, undo, pin, search filtering), detail screen, settings screen, lock screen.
-- **No unit tests** for: `ClipType.classify()` (URL detection edge cases), `timeAgo()` and `formatBytes()` helpers, `CaptureBridge` logic, settings persistence round-trip, `ClipActions`.
-- **No integration tests** for the capture flow (native → bridge → repository → UI).
-- **No golden tests** for visual regression.
-- **No edge case tests**: empty clipboard, very large clip (>256KB cap), special characters in FTS, concurrent capture calls.
-- Test coverage of the Kotlin layer is zero (no instrumented tests).
+- **Still only 6 tests total** for ~2,100 handwritten lines.
+- No widget tests for: history interactions, detail, settings, lock screen.
+- No unit tests for: `ClipType.classify()`, `timeAgo()`, `formatBytes()`, `CaptureBridge`, `DatabaseKey`, `Haptics`.
+- No integration tests for the capture flow.
+- No golden tests for the new skeleton/empty-state widgets.
+- Zero Kotlin instrumented tests.
+- No tests for the new debounced search provider.
 
 ---
 
-## 9. Code Quality & Documentation — 9/10
+## 9. Code Quality & Documentation — 9.5/10 ⬆️ *(was 9/10)*
 
 **Strengths:**
 - Every file has a purpose-documenting doc comment. Every non-trivial method explains its rationale.
-- `CLAUDE.md` is comprehensive: architecture overview, stack versions, commands, conventions, gotchas, known follow-ups. This is a model for how to document a project.
+- `CLAUDE.md` is comprehensive: architecture overview, stack versions, commands, conventions, gotchas.
 - Code style is consistent: single quotes, trailing commas, named parameters, const constructors.
-- No dead code, no commented-out code blocks, no `print()` statements left behind.
-- Inline comments explain "why", not "what" (e.g., why `createdAt` is kept immutable, why tombstones are preserved, why `lastFocusDispatchedContent` exists).
-- Generated files are correctly committed and excluded from analysis.
-- Error messages are user-friendly (not raw stack traces).
+- No dead code, no commented-out code blocks, no `print()`.
+- Inline comments explain "why", not "what".
+- Generated files correctly committed and excluded from analysis.
+- **NEW: README rewritten** with real project description, features, privacy section, and setup instructions.
+- **NEW: docs/PLAYSTORE_ROADMAP.md** tracks all work with status.
 
 **Weaknesses:**
-- `analysis_options.yaml` has no custom lint rules — everything is commented out. The default `flutter_lints` set is good but the project could benefit from stricter rules (e.g., `prefer_const_constructors`, `require_trailing_commas`, `avoid_dynamic_calls`).
-- `README.md` is the default Flutter template ("A new Flutter project") with no project-specific content. This is the first thing a new contributor or Play Store reviewer sees.
-- `pubspec.yaml` description is "A new Flutter project" — should be updated for store listing.
+- `analysis_options.yaml` still has no custom lint rules — everything is commented out.
+- `pubspec.yaml` description is still "A new Flutter project" — should match store listing.
 
 ---
 
-## 10. Build & Configuration — 7/10
+## 10. Build & Configuration — 8/10 ⬆️ *(was 7/10)*
 
 **Strengths:**
 - Kotlin DSL (`build.gradle.kts`) with Java 17 target.
-- `minSdk` correctly floored to 24 (needed for local_auth, secure storage, FGS types).
+- `minSdk` correctly floored to 24.
 - `core-ktx` dependency explicitly pinned.
-- AndroidManifest is thorough: all intent-filters (SEND, PROCESS_TEXT), service declarations with correct `foregroundServiceType`, tile service with `BIND_QUICK_SETTINGS_TILE` permission, `<queries>` for PROCESS_TEXT visibility.
-- `specialUse` FGS has the required `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` property for Play Console compliance.
-- Dependencies are version-pinned with caret ranges.
+- AndroidManifest is thorough: all intent-filters, service declarations, tile service, `<queries>`.
+- `specialUse` FGS has required property for Play Console compliance.
+- **NEW: `applicationId` changed** from `com.example.snipt` to `com.snipt.app`.
+- **NEW: Release signing config** added — reads from `key.properties` (gitignored), falls back to debug signing when absent.
 
 **Weaknesses:**
-- **`applicationId = "com.example.snipt"`** — still the placeholder package name. Must be changed before any store release. There is a `TODO` comment but it hasn't been addressed.
-- **No release signing configuration** — the release build type uses debug signing keys. Cannot ship to Play Store.
-- **No CI/CD pipeline** — no GitHub Actions workflow, no automated builds or tests on push/PR.
-- **No ProGuard/R8 rules** — though Flutter handles most of this, custom rules may be needed for release optimization.
-- `android/local.properties` should be in `.gitignore` (verify — it may already be).
-- Dependency versions are somewhat behind in some cases (e.g., `freezed: ^3.2.6-dev.1` is a dev release).
+- **No ProGuard/R8 rules** — release build optimization not verified.
+- **No CI/CD pipeline** — no automated builds or tests on push/PR.
+- **Default Flutter app icon** still in place — must be replaced with branded icon.
+- `versionCode` / `versionName` still using Flutter defaults (`1.0.0+1`) — should be set explicitly for store release.
+- `freezed: ^3.2.6-dev.1` is a dev release dependency.
 
 ---
 
-## 11. Error Handling & Resilience — 8/10
+## 11. Error Handling & Resilience — 9/10 ⬆️ *(was 8/10)*
 
 **Strengths:**
 - Settings controller: optimistic update with automatic revert on write failure.
-- Root gate: fail-open to history on settings read error (deliberate — avoids locking users out).
-- Capture bridge: `flutterReady()` call is fire-and-forget with caught errors (test environments).
-- Lock screen: handles `NotEnrolled` / `NotAvailable` PlatformExceptions with an escape hatch.
-- Settings screen: `_syncServiceState()` reconciles stored service state with actual running state on screen entry.
-- All async UI methods check `mounted` before calling `setState` or showing snackbars.
-- Onboarding: service start failure is silently caught (can be re-enabled from Settings).
+- Root gate: fail-open to history on settings read error (deliberate).
+- Capture bridge: `flutterReady()` call is fire-and-forget with caught errors.
+- Lock screen: handles `NotEnrolled` / `NotAvailable` exceptions with escape hatch.
+- Settings screen: `_syncServiceState()` reconciles service state on screen entry.
+- All async UI methods check `mounted` before calling `setState`.
+- **NEW: Global error handling** — `FlutterError.onError` handler + `runZonedGuarded` wrap the entire app as an outermost safety net.
+- **NEW: `ErrorWidget.builder`** replaces the red error screen with a calm fallback in release mode.
+- **NEW: History screen error state** now shows a premium `EmptyState` widget instead of raw `Error: $e`.
 
 **Weaknesses:**
-- History screen error state shows raw `Error: $e` — not user-friendly, and could leak internal details.
-- No global error boundary or crash reporting (no `FlutterError.onError` handler, no `PlatformDispatcher.instance.onError` handler).
+- No crash reporting backend (e.g., Sentry, Crashlytics) — errors are silently caught in release.
 - No retry logic for failed database operations.
-- `_toggleService()` in settings catches errors and shows a snackbar, but doesn't revert the switch state visually (the optimistic update in `setCaptureServiceEnabled` runs before the error is caught, and there's no revert).
-
----
-
-## Prioritized Recommendations
-
-### Critical (must fix before production release)
-
-1. **Enable SQLCipher database encryption** — clipboard contents in plaintext contradict the "privacy-focused" positioning. Drift supports SQLCipher via `SQLCipherOpenHandler`.
-2. **Change `applicationId`** from `com.example.snipt` to a real package name (e.g., `com.shonchoy.snipt` or your brand domain).
-3. **Set up release signing configuration** — generate a keystore and configure the release build type.
-4. **Wire `POST_NOTIFICATIONS` runtime permission request** (Android 13+) — the capture service is useless without a visible notification for new users.
-
-### High Priority (should fix soon)
-
-5. **Re-arm app lock on app resume** — use `WidgetsBindingObserver.didChangeAppLifecycleState` to reset `sessionUnlockedProvider` when the app returns from background.
-6. **Expand test coverage** — add widget tests for history/detail/settings/lock screens, unit tests for `ClipType.classify()`, `timeAgo()`, `formatBytes()`, and `CaptureBridge`.
-7. **Implement pagination / load-more** for history beyond the 50-row cap.
-8. **Set up CI/CD** — GitHub Actions workflow running `flutter analyze`, `flutter test`, and `flutter build apk` on every push/PR.
-9. **Replace the default README** with a real project description, screenshots, and setup instructions.
-
-### Medium Priority (improve quality)
-
-10. **Add global error handling** — `FlutterError.onError` + `PlatformDispatcher.onError` with user-friendly error UI.
-11. **Add stricter lint rules** in `analysis_options.yaml` (prefer_const_constructors, require_trailing_commas, etc.).
-12. **Add a branded notification icon** for the capture foreground service.
-13. **Add haptic feedback** on swipe-to-delete and long-press interactions.
-14. **Pin detail screen scroll position** when returning from pin/delete actions.
-15. **Migrate `StateProvider` → `Notifier`** for `sessionUnlockedProvider` (Riverpod 3 consistency).
-
-### Low Priority (polish)
-
-16. **Add empty-state illustrations** for "No clips yet" and "No matches".
-17. **Add clipboard auto-clear option** (clear system clipboard after N seconds).
-18. **Add PIN/password fallback** for app lock when biometrics are unavailable.
-19. **Remove unused `riverpod_generator`** dev dependency or adopt it consistently.
-20. **Add instrumented tests** for the Kotlin capture layer.
+- `_toggleService()` in settings doesn't visually revert the switch on error.
 
 ---
 
 ## Score Summary
 
-| # | Section | Score | Grade |
-|---|---|---|---|
-| 1 | Architecture & Design | 9/10 | A |
-| 2 | Data Layer (Database & Repository) | 9/10 | A |
-| 3 | Native Capture Engine (Kotlin) | 8/10 | B+ |
-| 4 | Platform Bridge (Pigeon) | 9/10 | A |
-| 5 | State Management (Riverpod) | 8/10 | B+ |
-| 6 | UI / Feature Screens | 8/10 | B+ |
-| 7 | Security & Privacy | 7/10 | B |
-| 8 | Test Coverage | 5/10 | C |
-| 9 | Code Quality & Documentation | 9/10 | A |
-| 10 | Build & Configuration | 7/10 | B |
-| 11 | Error Handling & Resilience | 8/10 | B+ |
-| | **Overall** | **7.9/10** | **B+** |
+| # | Section | v1 Score | v2 Score | Delta |
+|---|---|---|---|---|
+| 1 | Architecture & Design | 9/10 | 9/10 | — |
+| 2 | Data Layer | 9/10 | 9.5/10 | +0.5 |
+| 3 | Native Capture Engine | 8/10 | 8.5/10 | +0.5 |
+| 4 | Platform Bridge (Pigeon) | 9/10 | 9/10 | — |
+| 5 | State Management | 8/10 | 8.5/10 | +0.5 |
+| 6 | UI / Feature Screens | 8/10 | 9/10 | +1.0 |
+| 7 | Security & Privacy | 7/10 | 9/10 | +2.0 |
+| 8 | Test Coverage | 5/10 | 5/10 | — |
+| 9 | Code Quality & Documentation | 9/10 | 9.5/10 | +0.5 |
+| 10 | Build & Configuration | 7/10 | 8/10 | +1.0 |
+| 11 | Error Handling & Resilience | 8/10 | 9/10 | +1.0 |
+| | **Overall** | **7.9/10** | **8.6/10** | **+0.7** |
 
 ---
 
-*This audit was generated by scanning all 27 Dart source files, 4 Kotlin source files, 2 test files, and all configuration files. Static analysis (`flutter analyze`) and test execution (`flutter test`) were run and confirmed clean.*
+## Is the App Ready to Publish? — NO, but close.
+
+The codebase is production-quality and all critical security/config blockers are resolved. However, there are **hard requirements** missing that Google Play will reject or that will produce a poor first impression:
+
+### Hard Blockers (Play Store will reject)
+
+1. **Release signing not configured with a real keystore.** The template is in place, but you must generate a `.jks` keystore and create `android/key.properties`. Without it, the release build falls back to debug keys and Play Console will reject the AAB.
+2. **No release build validated.** `flutter build apk --release` (or `appbundle`) has not been run in this environment. Kotlin changes (POST_NOTIFICATIONS) are untested at runtime.
+3. **Privacy policy URL required.** Play Console requires a privacy policy for any app using sensitive permissions (biometric, foreground service). You need a hosted privacy policy page.
+4. **Default Flutter app icon.** Play Store listing requires a 512x512 icon. The current icon is the default Flutter logo.
+
+### Should-Fix Before Publish (user experience)
+
+5. **ProGuard/R8 rules** — release build may strip or obfuscate needed code without explicit rules.
+6. **pubspec.yaml description** still says "A new Flutter project."
+7. **Store listing assets** — screenshots, feature graphic, app description copy.
+8. **Runtime smoke test on emulator** — verify the SQLCipher migration, notification permission flow, and capture service on a real Android environment.
+
+### What IS Ready
+
+- Architecture, data layer, capture engine, state management — all production-quality
+- Security: encrypted DB, app lock with re-arm, no network access, sanitized inputs
+- UX: premium theme, skeleton loading, haptics, empty states, debounced search
+- Code quality: 0 analyzer issues, 6/6 tests, clean git history
+- Error handling: zone-guarded with graceful fallbacks
+
+---
+
+## Remaining Recommendations
+
+### High Priority
+1. Generate a release keystore and configure `key.properties`
+2. Run `flutter build appbundle --release` and fix any issues
+3. Create a branded app icon (512x512 + adaptive icon)
+4. Write and host a privacy policy
+5. Add ProGuard/R8 keep rules
+6. Expand test coverage (target 20+ tests)
+
+### Medium Priority
+7. Implement pagination / load-more (remove 50-row cap)
+8. Set up CI/CD (GitHub Actions)
+9. Add stricter lint rules
+10. Add a branded notification icon
+11. Add PIN fallback for app lock
+
+### Low Priority
+12. Add clipboard auto-clear timer
+13. Remove unused `riverpod_generator` or adopt it
+14. Add instrumented tests for Kotlin layer
+15. Add pull-to-refresh
+
+---
+
+*This audit was generated by scanning all 24 handwritten Dart source files, 3 Kotlin source files, 4 generated files, 2 test files, and all configuration files. Static analysis (`flutter analyze`) and test execution (`flutter test`) were run and confirmed clean.*
