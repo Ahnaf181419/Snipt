@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'clip_repository.dart';
@@ -27,7 +29,8 @@ final captureBridgeProvider = Provider<CaptureBridge>((ref) {
   return bridge;
 });
 
-/// Current search text. Empty string means "show full history".
+/// Current search text entered by the user (raw, undebounced). Empty string
+/// means "show full history".
 class SearchQuery extends Notifier<String> {
   @override
   String build() => '';
@@ -39,11 +42,21 @@ class SearchQuery extends Notifier<String> {
 final searchQueryProvider =
     NotifierProvider<SearchQuery, String>(SearchQuery.new);
 
+/// Debounced search query — emits the trimmed query 200ms after the user stops
+/// typing. This prevents FTS5 queries on every keystroke, keeping the UI
+/// responsive and reducing database I/O on rapid typing.
+final debouncedSearchProvider = StreamProvider.autoDispose<String>((ref) async* {
+  final query = ref.watch(searchQueryProvider);
+  await Future<void>.delayed(const Duration(milliseconds: 200));
+  yield query.trim();
+});
+
 /// The list shown on the home screen: full history, or FTS results when the
 /// user is searching. Reactive — updates as clips are captured or removed.
+/// Uses the debounced query to avoid flooding the database during typing.
 final clipListProvider = StreamProvider.autoDispose<List<Clip>>((ref) {
   final repo = ref.watch(clipRepositoryProvider);
-  final query = ref.watch(searchQueryProvider).trim();
+  final query = ref.watch(debouncedSearchProvider).value ?? '';
   return query.isEmpty ? repo.watchHistory() : repo.watchSearch(query);
 });
 
