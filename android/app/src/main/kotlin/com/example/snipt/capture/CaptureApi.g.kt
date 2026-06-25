@@ -304,6 +304,12 @@ interface CaptureHostApi {
   fun stopService()
   fun hasOverlayPermission(): Boolean
   fun requestOverlayPermission()
+  /**
+   * Android 13+ (API 33+) requires runtime POST_NOTIFICATIONS permission for
+   * the foreground-service notification to be visible. Returns true on older
+   * Android versions or when permission is already granted.
+   */
+  fun hasNotificationPermission(): Boolean
   /** Reads the current system clipboard. Returns null if empty or unreadable. */
   fun readClipboardNow(): CapturePayload?
   /** Writes [text] back to the system clipboard (used by tap-to-copy). */
@@ -403,6 +409,21 @@ interface CaptureHostApi {
             val wrapped: List<Any?> = try {
               api.requestOverlayPermission()
               listOf(null)
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.snipt.CaptureHostApi.hasNotificationPermission$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.hasNotificationPermission())
             } catch (exception: Throwable) {
               CaptureApiPigeonUtils.wrapError(exception)
             }

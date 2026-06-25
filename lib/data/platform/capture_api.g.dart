@@ -329,6 +329,28 @@ class CaptureHostApi {
     ;
   }
 
+  /// Android 13+ (API 33+) requires runtime POST_NOTIFICATIONS permission for
+  /// the foreground-service notification to be visible. Returns true on older
+  /// Android versions or when permission is already granted.
+  Future<bool> hasNotificationPermission() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.snipt.CaptureHostApi.hasNotificationPermission$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
   /// Reads the current system clipboard. Returns null if empty or unreadable.
   Future<CapturePayload?> readClipboardNow() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.snipt.CaptureHostApi.readClipboardNow$pigeonVar_messageChannelSuffix';

@@ -1,12 +1,16 @@
 package com.example.snipt
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.snipt.capture.CaptureFlutterApi
 import com.example.snipt.capture.CaptureHostApi
 import com.example.snipt.capture.CapturePayload
@@ -35,6 +39,11 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
     // re-dispatch (and double-count usageCount) every time a dialog closes or
     // a permission prompt returns while the clipboard hasn't changed.
     private var lastFocusDispatchedContent: String? = null
+
+    companion object {
+        const val ACTION_CAPTURE_NOW = "com.example.snipt.action.CAPTURE_NOW"
+        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 4201
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -114,12 +123,21 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
     override fun isServiceRunning(): Boolean = CaptureService.isRunning
 
     override fun startService() {
-        val intent = Intent(this, CaptureService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+        // Android 13+ requires runtime POST_NOTIFICATIONS permission before
+        // a foreground service notification is visible. Request it first;
+        // the service starts from onRequestPermissionsResult once granted.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_REQUEST_CODE,
+            )
+            return
         }
+        launchCaptureService()
     }
 
     override fun stopService() {
@@ -135,6 +153,22 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
                 Uri.parse("package:$packageName"),
             ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
+    }
+
+    override fun hasNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(
+            this, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun launchCaptureService() {
+        val intent = Intent(this, CaptureService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
     }
 
     override fun readClipboardNow(): CapturePayload? {
@@ -155,9 +189,19 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
         lastFocusDispatchedContent = text
     }
 
-    // endregion
-
-    companion object {
-        const val ACTION_CAPTURE_NOW = "com.example.snipt.action.CAPTURE_NOW"
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE &&
+            grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            launchCaptureService()
+        }
     }
+
+    // endregion
 }

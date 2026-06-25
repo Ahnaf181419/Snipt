@@ -36,6 +36,11 @@ abstract class CaptureHostApi {
   bool hasOverlayPermission();
   void requestOverlayPermission();
 
+  /// Android 13+ (API 33+) requires runtime POST_NOTIFICATIONS permission for
+  /// the foreground-service notification to be visible. Returns true on older
+  /// Android versions or when permission is already granted.
+  bool hasNotificationPermission();
+
   /// Reads the current system clipboard. Returns null if empty or unreadable.
   CapturePayload? readClipboardNow();
 
