@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/haptics.dart';
 import '../../data/db/database.dart';
 import '../../data/providers.dart';
 import '../../data/settings.dart';
 import '../../domain/models/capture_event.dart';
+import '../../widgets/empty_state.dart';
 import 'widgets/clip_tile.dart';
+import 'widgets/skeleton_clip_tile.dart';
 
 /// Home: searchable, reactive clipboard history with pin / copy / delete.
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -50,6 +53,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   /// same logic that lives in [CaptureBridge.captureFromClipboard]).
   Future<void> _captureFromClipboard() async {
     final messenger = ScaffoldMessenger.of(context);
+    await Haptics.light();
     final captured =
         await ref.read(captureBridgeProvider).captureFromClipboard();
     if (!mounted) return;
@@ -61,6 +65,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Future<void> _copy(Clip clip) async {
+    await Haptics.light();
     await ref.read(clipActionsProvider).copy(clip);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -69,6 +74,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Future<void> _delete(Clip clip) async {
+    await Haptics.medium();
     await ref.read(clipActionsProvider).delete(clip.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +119,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             child: TextField(
               controller: _searchController,
-              onChanged: (v) => ref.read(searchQueryProvider.notifier).set(v),
+              onChanged: (v) {
+                ref.read(searchQueryProvider.notifier).set(v);
+                setState(() {});
+              },
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: 'Search clips',
@@ -135,8 +144,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             _SetupBanner(onTap: () => context.push('/onboarding')),
           Expanded(
             child: clips.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              loading: () => const SkeletonClipList(),
+              error: (e, _) => EmptyState(
+                icon: Icons.error_outline,
+                title: 'Something went wrong',
+                subtitle: '$e',
+              ),
               data: (items) => _list(items, query),
             ),
           ),
@@ -147,9 +160,17 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Widget _list(List<Clip> items, String query) {
     if (items.isEmpty) {
-      return Center(
-        child: Text(query.trim().isNotEmpty ? 'No matches' : 'No clips yet'),
-      );
+      return query.trim().isNotEmpty
+          ? const EmptyState(
+              icon: Icons.search_off,
+              title: 'No matches found',
+              subtitle: 'Try a different search term',
+            )
+          : const EmptyState(
+              icon: Icons.assignment_outlined,
+              title: 'No clips yet',
+              subtitle: 'Copy text anywhere, then tap Capture to save it',
+            );
     }
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 96),
@@ -168,7 +189,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           child: ClipTile(
             clip: clip,
             onCopy: () => _copy(clip),
-            onTogglePin: () => ref.read(clipActionsProvider).togglePin(clip),
+            onTogglePin: () {
+              Haptics.light();
+              ref.read(clipActionsProvider).togglePin(clip);
+            },
             onDelete: () => _delete(clip),
             onOpen: () => context.push('/detail', extra: clip),
           ),
