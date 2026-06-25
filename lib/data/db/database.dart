@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/models/clip_type.dart';
+import 'database_key.dart';
 
 part 'database.g.dart';
 
@@ -61,7 +62,16 @@ class AppDatabase extends _$AppDatabase {
     return LazyDatabase(() async {
       final dir = await getApplicationDocumentsDirectory();
       final file = File(p.join(dir.path, 'snipt.sqlite'));
-      return NativeDatabase.createInBackground(file);
+      // SQLCipher: the key is generated on first launch and stored in the
+      // Android Keystore via flutter_secure_storage. Without it the database
+      // is unreadable, so clipboard contents are protected at rest.
+      final key = await DatabaseKeyManager.getOrCreate();
+      return NativeDatabase.createInBackground(
+        file,
+        setup: (db) {
+          db.execute("PRAGMA key = '$key'");
+        },
+      );
     });
   }
 }
