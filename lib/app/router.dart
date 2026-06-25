@@ -7,7 +7,7 @@ import '../features/root_gate.dart';
 import '../features/settings/settings_screen.dart';
 
 /// Central route table. The home route is a gate that picks
-/// onboarding / lock / history based on loaded settings.
+/// onboarding / history based on loaded settings.
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [

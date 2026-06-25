@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_auth/local_auth.dart';
 
 import '../../data/providers.dart';
 import '../../data/settings.dart';
@@ -61,31 +60,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Future<void> _toggleLock(bool enable) async {
-    final controller = ref.read(settingsControllerProvider.notifier);
-    if (!enable) {
-      await controller.setLockEnabled(false);
-      return;
-    }
-    final auth = LocalAuthentication();
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final canCheck = await auth.isDeviceSupported();
-      if (!canCheck) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('No device lock available')),
-        );
-        return;
-      }
-      final ok = await auth.authenticate(
-        localizedReason: 'Confirm to enable app lock',
-      );
-      if (ok) await controller.setLockEnabled(true);
-    } on Exception catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Lock unavailable: $e')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings =
@@ -111,13 +85,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: const Icon(Icons.open_in_new),
             onTap: () => bridge.host.requestOverlayPermission(),
           ),
-          const _SectionHeader('Privacy'),
-          SwitchListTile(
-            title: const Text('App lock'),
-            subtitle: const Text('Require biometrics / device PIN to open.'),
-            value: settings.lockEnabled,
-            onChanged: _toggleLock,
-          ),
+          const _SectionHeader('Storage'),
           ListTile(
             title: const Text('Keep history for'),
             subtitle: const Text('Pinned clips are never auto-deleted.'),
@@ -138,7 +106,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const _SectionHeader('About'),
           const ListTile(
-            leading: Icon(Icons.lock_outline),
+            leading: Icon(Icons.shield_outlined),
             title: Text('Local-first & private'),
             subtitle: Text(
               'Clips are stored only on this device. Nothing is uploaded.\n\n'
