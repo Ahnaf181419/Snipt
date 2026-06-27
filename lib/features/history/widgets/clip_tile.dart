@@ -26,6 +26,7 @@ class ClipTile extends StatelessWidget {
         ClipType.url => Icons.link,
         ClipType.richText => Icons.article_outlined,
         ClipType.text => Icons.notes,
+        ClipType.image => Icons.image_outlined,
       };
 
   @override

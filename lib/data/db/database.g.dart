@@ -131,6 +131,28 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, Clip> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _mediaPathMeta = const VerificationMeta(
+    'mediaPath',
+  );
+  @override
+  late final GeneratedColumn<String> mediaPath = GeneratedColumn<String>(
+    'media_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _mimeTypeMeta = const VerificationMeta(
+    'mimeType',
+  );
+  @override
+  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
+    'mime_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -144,6 +166,8 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, Clip> {
     createdAt,
     updatedAt,
     deletedAt,
+    mediaPath,
+    mimeType,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -229,6 +253,18 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, Clip> {
         deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
       );
     }
+    if (data.containsKey('media_path')) {
+      context.handle(
+        _mediaPathMeta,
+        mediaPath.isAcceptableOrUnknown(data['media_path']!, _mediaPathMeta),
+      );
+    }
+    if (data.containsKey('mime_type')) {
+      context.handle(
+        _mimeTypeMeta,
+        mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta),
+      );
+    }
     return context;
   }
 
@@ -284,6 +320,14 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, Clip> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}deleted_at'],
       ),
+      mediaPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_path'],
+      ),
+      mimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mime_type'],
+      ),
     );
   }
 
@@ -308,6 +352,13 @@ class Clip extends DataClass implements Insertable<Clip> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
+
+  /// Path to the media file (relative to filesDir) for image clips. Null for
+  /// text/url/richText clips.
+  final String? mediaPath;
+
+  /// MIME type of the media file (e.g. "image/jpeg"). Null for text clips.
+  final String? mimeType;
   const Clip({
     required this.id,
     required this.type,
@@ -320,6 +371,8 @@ class Clip extends DataClass implements Insertable<Clip> {
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
+    this.mediaPath,
+    this.mimeType,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -341,6 +394,12 @@ class Clip extends DataClass implements Insertable<Clip> {
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
+    if (!nullToAbsent || mediaPath != null) {
+      map['media_path'] = Variable<String>(mediaPath);
+    }
+    if (!nullToAbsent || mimeType != null) {
+      map['mime_type'] = Variable<String>(mimeType);
+    }
     return map;
   }
 
@@ -361,6 +420,12 @@ class Clip extends DataClass implements Insertable<Clip> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      mediaPath: mediaPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaPath),
+      mimeType: mimeType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mimeType),
     );
   }
 
@@ -383,6 +448,8 @@ class Clip extends DataClass implements Insertable<Clip> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      mediaPath: serializer.fromJson<String?>(json['mediaPath']),
+      mimeType: serializer.fromJson<String?>(json['mimeType']),
     );
   }
   @override
@@ -400,6 +467,8 @@ class Clip extends DataClass implements Insertable<Clip> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'mediaPath': serializer.toJson<String?>(mediaPath),
+      'mimeType': serializer.toJson<String?>(mimeType),
     };
   }
 
@@ -415,6 +484,8 @@ class Clip extends DataClass implements Insertable<Clip> {
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
+    Value<String?> mediaPath = const Value.absent(),
+    Value<String?> mimeType = const Value.absent(),
   }) => Clip(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -427,6 +498,8 @@ class Clip extends DataClass implements Insertable<Clip> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    mediaPath: mediaPath.present ? mediaPath.value : this.mediaPath,
+    mimeType: mimeType.present ? mimeType.value : this.mimeType,
   );
   Clip copyWithCompanion(ClipsCompanion data) {
     return Clip(
@@ -445,6 +518,8 @@ class Clip extends DataClass implements Insertable<Clip> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      mediaPath: data.mediaPath.present ? data.mediaPath.value : this.mediaPath,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
     );
   }
 
@@ -461,7 +536,9 @@ class Clip extends DataClass implements Insertable<Clip> {
           ..write('usageCount: $usageCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('mediaPath: $mediaPath, ')
+          ..write('mimeType: $mimeType')
           ..write(')'))
         .toString();
   }
@@ -479,6 +556,8 @@ class Clip extends DataClass implements Insertable<Clip> {
     createdAt,
     updatedAt,
     deletedAt,
+    mediaPath,
+    mimeType,
   );
   @override
   bool operator ==(Object other) =>
@@ -494,7 +573,9 @@ class Clip extends DataClass implements Insertable<Clip> {
           other.usageCount == this.usageCount &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.mediaPath == this.mediaPath &&
+          other.mimeType == this.mimeType);
 }
 
 class ClipsCompanion extends UpdateCompanion<Clip> {
@@ -509,6 +590,8 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
+  final Value<String?> mediaPath;
+  final Value<String?> mimeType;
   final Value<int> rowid;
   const ClipsCompanion({
     this.id = const Value.absent(),
@@ -522,6 +605,8 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.mediaPath = const Value.absent(),
+    this.mimeType = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ClipsCompanion.insert({
@@ -536,6 +621,8 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
+    this.mediaPath = const Value.absent(),
+    this.mimeType = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        type = Value(type),
@@ -556,6 +643,8 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
+    Expression<String>? mediaPath,
+    Expression<String>? mimeType,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -570,6 +659,8 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (mediaPath != null) 'media_path': mediaPath,
+      if (mimeType != null) 'mime_type': mimeType,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -586,6 +677,8 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
+    Value<String?>? mediaPath,
+    Value<String?>? mimeType,
     Value<int>? rowid,
   }) {
     return ClipsCompanion(
@@ -600,6 +693,8 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      mediaPath: mediaPath ?? this.mediaPath,
+      mimeType: mimeType ?? this.mimeType,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -640,6 +735,12 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
+    if (mediaPath.present) {
+      map['media_path'] = Variable<String>(mediaPath.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -660,6 +761,8 @@ class ClipsCompanion extends UpdateCompanion<Clip> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('mediaPath: $mediaPath, ')
+          ..write('mimeType: $mimeType, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -690,6 +793,8 @@ typedef $$ClipsTableCreateCompanionBuilder =
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<DateTime?> deletedAt,
+      Value<String?> mediaPath,
+      Value<String?> mimeType,
       Value<int> rowid,
     });
 typedef $$ClipsTableUpdateCompanionBuilder =
@@ -705,6 +810,8 @@ typedef $$ClipsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
+      Value<String?> mediaPath,
+      Value<String?> mimeType,
       Value<int> rowid,
     });
 
@@ -769,6 +876,16 @@ class $$ClipsTableFilterComposer extends Composer<_$AppDatabase, $ClipsTable> {
 
   ColumnFilters<DateTime> get deletedAt => $composableBuilder(
     column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaPath => $composableBuilder(
+    column: $table.mediaPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -836,6 +953,16 @@ class $$ClipsTableOrderingComposer
     column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get mediaPath => $composableBuilder(
+    column: $table.mediaPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ClipsTableAnnotationComposer
@@ -883,6 +1010,12 @@ class $$ClipsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get mediaPath =>
+      $composableBuilder(column: $table.mediaPath, builder: (column) => column);
+
+  GeneratedColumn<String> get mimeType =>
+      $composableBuilder(column: $table.mimeType, builder: (column) => column);
 }
 
 class $$ClipsTableTableManager
@@ -924,6 +1057,8 @@ class $$ClipsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String?> mediaPath = const Value.absent(),
+                Value<String?> mimeType = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ClipsCompanion(
                 id: id,
@@ -937,6 +1072,8 @@ class $$ClipsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
+                mediaPath: mediaPath,
+                mimeType: mimeType,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -952,6 +1089,8 @@ class $$ClipsTableTableManager
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String?> mediaPath = const Value.absent(),
+                Value<String?> mimeType = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ClipsCompanion.insert(
                 id: id,
@@ -965,6 +1104,8 @@ class $$ClipsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
+                mediaPath: mediaPath,
+                mimeType: mimeType,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

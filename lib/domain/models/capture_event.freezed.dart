@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CaptureEvent {
 
- String get content; CaptureSource get source; String? get sourceApp;
+ String get content; CaptureSource get source; String? get sourceApp; String? get mediaPath; String? get mimeType;
 /// Create a copy of CaptureEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $CaptureEventCopyWith<CaptureEvent> get copyWith => _$CaptureEventCopyWithImpl<C
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CaptureEvent&&(identical(other.content, content) || other.content == content)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourceApp, sourceApp) || other.sourceApp == sourceApp));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CaptureEvent&&(identical(other.content, content) || other.content == content)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourceApp, sourceApp) || other.sourceApp == sourceApp)&&(identical(other.mediaPath, mediaPath) || other.mediaPath == mediaPath)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,content,source,sourceApp);
+int get hashCode => Object.hash(runtimeType,content,source,sourceApp,mediaPath,mimeType);
 
 @override
 String toString() {
-  return 'CaptureEvent(content: $content, source: $source, sourceApp: $sourceApp)';
+  return 'CaptureEvent(content: $content, source: $source, sourceApp: $sourceApp, mediaPath: $mediaPath, mimeType: $mimeType)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $CaptureEventCopyWith<$Res>  {
   factory $CaptureEventCopyWith(CaptureEvent value, $Res Function(CaptureEvent) _then) = _$CaptureEventCopyWithImpl;
 @useResult
 $Res call({
- String content, CaptureSource source, String? sourceApp
+ String content, CaptureSource source, String? sourceApp, String? mediaPath, String? mimeType
 });
 
 
@@ -65,11 +65,13 @@ class _$CaptureEventCopyWithImpl<$Res>
 
 /// Create a copy of CaptureEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? content = null,Object? source = null,Object? sourceApp = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? content = null,Object? source = null,Object? sourceApp = freezed,Object? mediaPath = freezed,Object? mimeType = freezed,}) {
   return _then(_self.copyWith(
 content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
 as CaptureSource,sourceApp: freezed == sourceApp ? _self.sourceApp : sourceApp // ignore: cast_nullable_to_non_nullable
+as String?,mediaPath: freezed == mediaPath ? _self.mediaPath : mediaPath // ignore: cast_nullable_to_non_nullable
+as String?,mimeType: freezed == mimeType ? _self.mimeType : mimeType // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -155,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String content,  CaptureSource source,  String? sourceApp)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String content,  CaptureSource source,  String? sourceApp,  String? mediaPath,  String? mimeType)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CaptureEvent() when $default != null:
-return $default(_that.content,_that.source,_that.sourceApp);case _:
+return $default(_that.content,_that.source,_that.sourceApp,_that.mediaPath,_that.mimeType);case _:
   return orElse();
 
 }
@@ -176,10 +178,10 @@ return $default(_that.content,_that.source,_that.sourceApp);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String content,  CaptureSource source,  String? sourceApp)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String content,  CaptureSource source,  String? sourceApp,  String? mediaPath,  String? mimeType)  $default,) {final _that = this;
 switch (_that) {
 case _CaptureEvent():
-return $default(_that.content,_that.source,_that.sourceApp);case _:
+return $default(_that.content,_that.source,_that.sourceApp,_that.mediaPath,_that.mimeType);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -196,10 +198,10 @@ return $default(_that.content,_that.source,_that.sourceApp);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String content,  CaptureSource source,  String? sourceApp)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String content,  CaptureSource source,  String? sourceApp,  String? mediaPath,  String? mimeType)?  $default,) {final _that = this;
 switch (_that) {
 case _CaptureEvent() when $default != null:
-return $default(_that.content,_that.source,_that.sourceApp);case _:
+return $default(_that.content,_that.source,_that.sourceApp,_that.mediaPath,_that.mimeType);case _:
   return null;
 
 }
@@ -211,12 +213,14 @@ return $default(_that.content,_that.source,_that.sourceApp);case _:
 @JsonSerializable()
 
 class _CaptureEvent implements CaptureEvent {
-  const _CaptureEvent({required this.content, this.source = CaptureSource.unknown, this.sourceApp});
+  const _CaptureEvent({required this.content, this.source = CaptureSource.unknown, this.sourceApp, this.mediaPath, this.mimeType});
   factory _CaptureEvent.fromJson(Map<String, dynamic> json) => _$CaptureEventFromJson(json);
 
 @override final  String content;
 @override@JsonKey() final  CaptureSource source;
 @override final  String? sourceApp;
+@override final  String? mediaPath;
+@override final  String? mimeType;
 
 /// Create a copy of CaptureEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -231,16 +235,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CaptureEvent&&(identical(other.content, content) || other.content == content)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourceApp, sourceApp) || other.sourceApp == sourceApp));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CaptureEvent&&(identical(other.content, content) || other.content == content)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourceApp, sourceApp) || other.sourceApp == sourceApp)&&(identical(other.mediaPath, mediaPath) || other.mediaPath == mediaPath)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,content,source,sourceApp);
+int get hashCode => Object.hash(runtimeType,content,source,sourceApp,mediaPath,mimeType);
 
 @override
 String toString() {
-  return 'CaptureEvent(content: $content, source: $source, sourceApp: $sourceApp)';
+  return 'CaptureEvent(content: $content, source: $source, sourceApp: $sourceApp, mediaPath: $mediaPath, mimeType: $mimeType)';
 }
 
 
@@ -251,7 +255,7 @@ abstract mixin class _$CaptureEventCopyWith<$Res> implements $CaptureEventCopyWi
   factory _$CaptureEventCopyWith(_CaptureEvent value, $Res Function(_CaptureEvent) _then) = __$CaptureEventCopyWithImpl;
 @override @useResult
 $Res call({
- String content, CaptureSource source, String? sourceApp
+ String content, CaptureSource source, String? sourceApp, String? mediaPath, String? mimeType
 });
 
 
@@ -268,11 +272,13 @@ class __$CaptureEventCopyWithImpl<$Res>
 
 /// Create a copy of CaptureEvent
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? content = null,Object? source = null,Object? sourceApp = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? content = null,Object? source = null,Object? sourceApp = freezed,Object? mediaPath = freezed,Object? mimeType = freezed,}) {
   return _then(_CaptureEvent(
 content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
 as CaptureSource,sourceApp: freezed == sourceApp ? _self.sourceApp : sourceApp // ignore: cast_nullable_to_non_nullable
+as String?,mediaPath: freezed == mediaPath ? _self.mediaPath : mediaPath // ignore: cast_nullable_to_non_nullable
+as String?,mimeType: freezed == mimeType ? _self.mimeType : mimeType // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

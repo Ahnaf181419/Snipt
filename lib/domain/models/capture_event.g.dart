@@ -13,6 +13,8 @@ _CaptureEvent _$CaptureEventFromJson(Map<String, dynamic> json) =>
           $enumDecodeNullable(_$CaptureSourceEnumMap, json['source']) ??
           CaptureSource.unknown,
       sourceApp: json['sourceApp'] as String?,
+      mediaPath: json['mediaPath'] as String?,
+      mimeType: json['mimeType'] as String?,
     );
 
 Map<String, dynamic> _$CaptureEventToJson(_CaptureEvent instance) =>
@@ -20,6 +22,8 @@ Map<String, dynamic> _$CaptureEventToJson(_CaptureEvent instance) =>
       'content': instance.content,
       'source': _$CaptureSourceEnumMap[instance.source]!,
       'sourceApp': instance.sourceApp,
+      'mediaPath': instance.mediaPath,
+      'mimeType': instance.mimeType,
     };
 
 const _$CaptureSourceEnumMap = {

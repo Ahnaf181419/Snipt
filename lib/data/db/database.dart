@@ -28,6 +28,13 @@ class Clips extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
+  /// Path to the media file (relative to filesDir) for image clips. Null for
+  /// text/url/richText clips.
+  TextColumn get mediaPath => text().nullable()();
+
+  /// MIME type of the media file (e.g. "image/jpeg"). Null for text clips.
+  TextColumn get mimeType => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -40,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -55,6 +62,12 @@ class AppDatabase extends _$AppDatabase {
             'CREATE INDEX idx_clips_active ON clips '
             '(deleted_at, is_pinned, created_at)',
           );
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(clips, clips.mediaPath);
+            await m.addColumn(clips, clips.mimeType);
+          }
         },
       );
 

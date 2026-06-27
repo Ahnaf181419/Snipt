@@ -3,7 +3,8 @@
 enum ClipType {
   text,
   url,
-  richText;
+  richText,
+  image;
 
   /// Best-effort classification of a raw captured string.
   static ClipType classify(String content) {

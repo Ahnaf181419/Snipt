@@ -15,6 +15,8 @@ abstract class CaptureEvent with _$CaptureEvent {
     required String content,
     @Default(CaptureSource.unknown) CaptureSource source,
     String? sourceApp,
+    String? mediaPath,
+    String? mimeType,
   }) = _CaptureEvent;
 
   factory CaptureEvent.fromJson(Map<String, dynamic> json) =>
