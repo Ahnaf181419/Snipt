@@ -45,8 +45,10 @@ pigeons/capture_api.dart        Pigeon contract (source of truth for the channel
 ### Data model (sync-ready, not yet synced)
 `Clips`: UUID `id`, `contentHash` UNIQUE (O(1) dedup), `updatedAt`
 (last-write-wins), `deletedAt` soft-delete tombstone, `isPinned`, `usageCount`.
+Image clips add `mediaPath` (absolute path to filesDir/media/) and `mimeType`.
 Search via a standalone FTS5 table maintained transactionally by the repository
-(no triggers). A future `RemoteSyncRepository` can wrap `ClipRepository`.
+(no triggers). Image clips have no FTS entry. A future `RemoteSyncRepository`
+can wrap `ClipRepository`.
 
 ## Stack
 Flutter 3.44 / Dart 3.12 · Riverpod 3 (manual providers; core API, not the
@@ -79,4 +81,7 @@ dynamic_color · local_auth 3 · flutter_secure_storage 10 · Pigeon 26.
 - At-rest DB encryption (SQLCipher) is designed-for but not enabled; app lock is
   not yet built at all (no PIN/biometric gate exists — the Pro-benefits copy
   in settings is intentionally no longer promising it).
-- Sync, the IME keyboard, and image/rich clips are out of the current scope.
+- Image clips: EXIF orientation is not handled on insert; thumbnails are
+  decoded on-demand (no pre-generated cache on disk); SEND_MULTIPLE (batch
+  share) is not supported.
+- Sync and the IME keyboard are out of the current scope.
