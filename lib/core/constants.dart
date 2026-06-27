@@ -17,4 +17,13 @@ class AppConstants {
 
   /// Hard cap on a single captured payload to keep the DB lean.
   static const int maxClipBytes = 256 * 1024;
+
+  /// Free-tier soft cap on the number of stored (non-pinned) clips. Above
+  /// this, new captures trigger pruning of the oldest non-pinned rows.
+  /// Pro users bypass this cap.
+  static const int freeTierClipCap = 200;
+
+  /// Play Store product id for the Snipt Pro one-time unlock. Must match
+  /// the in-app product configured in Play Console.
+  static const String proProductId = 'snipt_pro_unlock';
 }

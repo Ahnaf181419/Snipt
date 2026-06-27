@@ -20,6 +20,12 @@ class ClipRepository {
   final AppDatabase _db;
   final Uuid _uuid;
 
+  /// Callback the UI sets to read whether the user owns Pro. The free-tier
+  /// cap is enforced only when this is false. Defaults to `false` so a
+  /// caller that forgets to wire it stays in the safe (capped) state.
+  /// Wired from `providers.dart` after the settings store is ready.
+  bool Function() isProSupplier = () => false;
+
   /// Active history, most-recently-used first, pinned entries floated to top.
   /// Sorted by [updatedAt] (not createdAt) so that copying a clip floats it
   /// back to the top without corrupting the immutable "Saved" timestamp.
@@ -92,6 +98,14 @@ class ClipRepository {
         return refreshed;
       }
 
+      // Free-tier cap: if a non-Pro user is at the cap, prune the oldest
+      // non-pinned, non-tombstoned rows until we have room. Pinned rows
+      // are never removed by the cap (mirroring the existing retention
+      // rule). We do this *before* the insert so the new clip always fits.
+      if (!isProSupplier()) {
+        await _enforceFreeTierCap();
+      }
+
       final clip = Clip(
         id: _uuid.v4(),
         type: type,
@@ -109,6 +123,36 @@ class ClipRepository {
       await _reindex(clip.id, content);
       return clip;
     });
+  }
+
+  /// Removes the oldest non-pinned, non-tombstoned rows so that the active
+  /// row count is below [AppConstants.freeTierClipCap]. Leaves a 5% margin
+  /// so a small burst of captures doesn't trigger a prune on every single
+  /// one. No-op for Pro users.
+  Future<void> _enforceFreeTierCap() async {
+    // Use a raw count query so we don't depend on selectOnly's table-type
+    // inference (which is sensitive to clause order in this Drift version).
+    final countRow = await _db.customSelect(
+      'SELECT COUNT(*) AS c FROM clips WHERE deleted_at IS NULL',
+      readsFrom: {_db.clips},
+    ).getSingle();
+    final count = countRow.read<int>('c');
+    final target = (AppConstants.freeTierClipCap * 0.95).floor();
+    if (count < target) return;
+    // Prune the (count - target + 1) oldest non-pinned rows.
+    final excess = count - target + 1;
+    final victims = await (_db.select(_db.clips)
+          ..where((t) => t.isPinned.equals(false) & t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.updatedAt)])
+          ..limit(excess))
+        .get();
+    for (final v in victims) {
+      await _db.customStatement('DELETE FROM clip_fts WHERE id = ?', [v.id]);
+    }
+    final ids = victims.map((v) => v.id).toList();
+    if (ids.isNotEmpty) {
+      await (_db.delete(_db.clips)..where((t) => t.id.isIn(ids))).go();
+    }
   }
 
   Future<void> togglePin(String id, bool isPinned) async {

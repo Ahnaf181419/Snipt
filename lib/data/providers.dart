@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'billing/billing_providers.dart';
 import 'clip_repository.dart';
 import 'db/database.dart';
 import 'platform/capture_api.g.dart';
@@ -15,7 +16,11 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 });
 
 final clipRepositoryProvider = Provider<ClipRepository>((ref) {
-  return ClipRepository(ref.watch(databaseProvider));
+  final repo = ClipRepository(ref.watch(databaseProvider));
+  // Wire the live Pro flag so the free-tier cap is bypassed for owners.
+  // Reading isProProvider keeps the repository reactive to billing changes.
+  repo.isProSupplier = () => ref.read(isProProvider);
+  return repo;
 });
 
 /// Connects the native capture engine to the repository. Reading this provider

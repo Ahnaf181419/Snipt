@@ -2,27 +2,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// User-controlled preferences. [retentionDays] of 0 means "keep forever".
+///
+/// [isPro] is the local entitlement flag. It is set to `true` by the billing
+/// service after a verified purchase, and survives uninstalls via Play's
+/// purchase-restoration flow. We persist it in encrypted storage so the UI
+/// stays Pro-gated during the cold start that precedes the first billing
+/// restore query.
 class AppSettings {
   const AppSettings({
     this.onboarded = false,
     this.retentionDays = 30,
     this.captureServiceEnabled = false,
+    this.isPro = false,
   });
 
   final bool onboarded;
   final int retentionDays;
   final bool captureServiceEnabled;
 
+  /// Whether the user owns the Snipt Pro one-time unlock. Cached locally so
+  /// the UI can gate Pro features on the very first frame.
+  final bool isPro;
+
   AppSettings copyWith({
     bool? onboarded,
     int? retentionDays,
     bool? captureServiceEnabled,
+    bool? isPro,
   }) {
     return AppSettings(
       onboarded: onboarded ?? this.onboarded,
       retentionDays: retentionDays ?? this.retentionDays,
       captureServiceEnabled:
           captureServiceEnabled ?? this.captureServiceEnabled,
+      isPro: isPro ?? this.isPro,
     );
   }
 }
@@ -38,6 +51,7 @@ class SettingsStore {
   static const _kOnboarded = 'onboarded';
   static const _kRetention = 'retention_days';
   static const _kService = 'capture_service_enabled';
+  static const _kPro = 'is_pro';
 
   Future<AppSettings> read() async {
     final all = await _storage.readAll();
@@ -45,6 +59,7 @@ class SettingsStore {
       onboarded: all[_kOnboarded] == 'true',
       retentionDays: int.tryParse(all[_kRetention] ?? '') ?? 30,
       captureServiceEnabled: all[_kService] == 'true',
+      isPro: all[_kPro] == 'true',
     );
   }
 
@@ -52,6 +67,7 @@ class SettingsStore {
     await _storage.write(key: _kOnboarded, value: '${s.onboarded}');
     await _storage.write(key: _kRetention, value: '${s.retentionDays}');
     await _storage.write(key: _kService, value: '${s.captureServiceEnabled}');
+    await _storage.write(key: _kPro, value: '${s.isPro}');
   }
 }
 
@@ -84,6 +100,11 @@ class SettingsController extends AsyncNotifier<AppSettings> {
       _update(_current.copyWith(retentionDays: days));
   Future<void> setCaptureServiceEnabled(bool value) =>
       _update(_current.copyWith(captureServiceEnabled: value));
+
+  /// Sets the local Pro entitlement. Called by the billing service after a
+  /// verified purchase or successful restore.
+  Future<void> setPro(bool value) =>
+      _update(_current.copyWith(isPro: value));
 }
 
 final settingsControllerProvider =

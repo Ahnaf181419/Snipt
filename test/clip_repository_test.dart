@@ -76,4 +76,27 @@ void main() {
     expect(after, hasLength(1));
     expect(after.single.id, keep.id);
   });
+
+  test('free-tier cap prunes oldest non-pinned rows; pinned survive', () async {
+    repo.isProSupplier = () => false;
+    // Capture 205 distinct clips so the cap (200) kicks in. Each capture
+    // bumps updatedAt, so the 5 oldest non-pinned should be evicted.
+    for (var i = 0; i < 205; i++) {
+      await repo.capture(ev('free cap clip $i'));
+    }
+    final history = await repo.watchHistory().first;
+    expect(history.length, lessThanOrEqualTo(200));
+    // The oldest contents should be gone, the newest should remain.
+    expect(history.any((c) => c.content == 'free cap clip 0'), isFalse);
+    expect(history.any((c) => c.content == 'free cap clip 204'), isTrue);
+  });
+
+  test('Pro users bypass the free-tier cap', () async {
+    repo.isProSupplier = () => true;
+    for (var i = 0; i < 50; i++) {
+      await repo.capture(ev('pro clip $i'));
+    }
+    final history = await repo.watchHistory().first;
+    expect(history, hasLength(50));
+  });
 }

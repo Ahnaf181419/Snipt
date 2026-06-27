@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/billing/billing_providers.dart';
+import '../../data/billing/billing_service.dart';
 import '../../data/providers.dart';
 import '../../data/settings.dart';
 
@@ -60,16 +62,82 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _buyPro() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(billingServiceProvider).buyPro();
+      // Outcome (success / error) flows through purchaseStatusProvider
+      // and the bootstrap listener, so no UI handling needed here beyond
+      // telling the user we kicked off the flow.
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Opening Google Play…')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not start purchase: $e')),
+      );
+    }
+  }
+
+  Future<void> _restorePurchases() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(billingServiceProvider).restore();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Restoring purchases…')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not restore: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings =
         ref.watch(settingsControllerProvider).value ?? const AppSettings();
     final bridge = ref.read(captureBridgeProvider);
+    final isPro = ref.watch(isProProvider);
+    final purchaseStatus =
+        ref.watch(purchaseStatusProvider).value ?? PurchaseStatus.notOwned;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          const _SectionHeader('Snipt Pro'),
+          if (isPro) ...[
+            const ListTile(
+              leading: Icon(Icons.workspace_premium, color: Colors.amber),
+              title: Text('Snipt Pro is active'),
+              subtitle: Text(
+                'Thanks for supporting local-first clipboard history.',
+              ),
+            ),
+          ] else ...[
+            const _ProBenefitsTile(),
+            ListTile(
+              leading: const Icon(Icons.shopping_bag_outlined),
+              title: const Text('Upgrade to Pro'),
+              subtitle: Text(_upgradeSubtitle(purchaseStatus)),
+              trailing: purchaseStatus == PurchaseStatus.pending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.chevron_right),
+              onTap: purchaseStatus == PurchaseStatus.pending
+                  ? null
+                  : _buyPro,
+            ),
+            ListTile(
+              leading: const Icon(Icons.refresh),
+              title: const Text('Restore purchases'),
+              onTap: _restorePurchases,
+            ),
+          ],
           const _SectionHeader('Capture'),
           SwitchListTile(
             title: const Text('Capture service'),
@@ -116,6 +184,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             isThreeLine: true,
           ),
+        ],
+      ),
+    );
+  }
+
+  String _upgradeSubtitle(PurchaseStatus status) {
+    switch (status) {
+      case PurchaseStatus.pending:
+        return 'Waiting for Google Play…';
+      case PurchaseStatus.error:
+        return 'Last attempt failed — tap to retry';
+      case PurchaseStatus.owned:
+        return 'You already own Pro. Tap Restore purchases above.';
+      case PurchaseStatus.notOwned:
+        return 'Unlock unlimited clips, export, and more.';
+    }
+  }
+}
+
+/// Compact list of Pro benefits. Kept here (not in the upgrade dialog) so
+/// the value is visible before the user commits to opening Google Play.
+class _ProBenefitsTile extends StatelessWidget {
+  const _ProBenefitsTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pro unlocks',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: scheme.primary,
+                ),
+          ),
+          const SizedBox(height: 4),
+          const Text('• Unlimited clip history (free tier: 200)'),
+          const Text('• Export & import your clips'),
+          const Text('• Auto-clear timer for the system clipboard'),
+          const Text('• Home-screen quick-capture widget'),
         ],
       ),
     );

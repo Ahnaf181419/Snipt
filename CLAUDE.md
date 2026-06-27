@@ -33,7 +33,7 @@ lib/
     settings.dart          encrypted prefs + AsyncNotifier
     providers.dart         Riverpod wiring + ClipActions
   domain/models/   ClipType (+classifier), CaptureEvent (freezed)
-  features/    history/ · detail/ · settings/ · onboarding/ · lock/ · root_gate
+  features/    history/ · detail/ · settings/ · onboarding/ · root_gate
 android/app/src/main/kotlin/com/example/snipt/
   MainActivity.kt              implements the Pigeon host API + intent handling
   capture/CaptureService.kt    specialUse foreground service
@@ -76,7 +76,7 @@ dynamic_color · local_auth 3 · flutter_secure_storage 10 · Pigeon 26.
   notification needs the user to allow notifications.
 - History/search are capped at the newest 50 rows; pagination / load-more is not
   implemented yet (`watchHistory`/`watchSearch` take a `limit`).
-- App lock only gates cold start; it is not re-armed when the app is resumed
-  from the background (`sessionUnlockedProvider` persists for the session).
-- At-rest DB encryption (SQLCipher) is designed-for but not enabled; app lock is.
+- At-rest DB encryption (SQLCipher) is designed-for but not enabled; app lock is
+  not yet built at all (no PIN/biometric gate exists — the Pro-benefits copy
+  in settings is intentionally no longer promising it).
 - Sync, the IME keyboard, and image/rich clips are out of the current scope.
