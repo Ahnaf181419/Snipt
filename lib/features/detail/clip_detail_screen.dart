@@ -85,7 +85,10 @@ class ClipDetailScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         children: [
           if (_isImage) ...[
-            _FullImagePreview(path: clip.mediaPath!),
+            _FullImagePreview(
+              path: clip.mediaPath!,
+              onShare: () => actions.shareImage(clip),
+            ),
             const SizedBox(height: 16),
           ] else
             SelectableText(
@@ -149,19 +152,15 @@ class ClipDetailScreen extends ConsumerWidget {
 
 /// Full-resolution image preview for the detail screen, with tap-to-share.
 class _FullImagePreview extends StatelessWidget {
-  const _FullImagePreview({required this.path});
+  const _FullImagePreview({required this.path, required this.onShare});
 
   final String path;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onLongPress: () {
-        final container = ProviderScope.containerOf(context);
-        container.read(clipActionsProvider).shareImage(
-              context.findAncestorWidgetOfExactType<ClipDetailScreen>()!.clip,
-            );
-      },
+      onLongPress: onShare,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.file(

@@ -255,8 +255,13 @@ class ClipRepository {
   }
 
   /// Soft delete: tombstone the row (kept for future sync) and drop it from
-  /// the search index.
+  /// the search index. For image clips, the media file is also unlinked since
+  /// it can never be restored from a tombstone row.
   Future<void> softDelete(String id) async {
+    final clip = await (_db.select(_db.clips)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (clip == null) return;
+    await _unlinkMedia(clip.mediaPath);
     await _db.transaction(() async {
       await (_db.update(_db.clips)..where((t) => t.id.equals(id))).write(
         ClipsCompanion(

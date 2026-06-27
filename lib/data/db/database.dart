@@ -28,7 +28,7 @@ class Clips extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
-  /// Path to the media file (relative to filesDir) for image clips. Null for
+  /// Absolute path to the media file for image clips. Null for
   /// text/url/richText clips.
   TextColumn get mediaPath => text().nullable()();
 
