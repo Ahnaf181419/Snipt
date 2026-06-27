@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snipt/data/clip_repository.dart';
@@ -98,5 +100,66 @@ void main() {
     }
     final history = await repo.watchHistory().first;
     expect(history, hasLength(50));
+  });
+
+  // ─── Image clip tests ───────────────────────────────────────────────
+
+  /// Creates a temp file with [bytes] of dummy data and returns its path.
+  Future<String> makeImageFile(int bytes) async {
+    final dir = await Directory.systemTemp.createTemp('snipt_test');
+    final file = File('${dir.path}/img_${DateTime.now().microsecondsSinceEpoch}.jpg');
+    await file.writeAsBytes(List.filled(bytes, 0));
+    return file.path;
+  }
+
+  test('image capture persists with type=image and correct mediaPath', () async {
+    final path = await makeImageFile(1024);
+    final clip = await repo.captureImage(
+      mediaPath: path,
+      mimeType: 'image/jpeg',
+    );
+    expect(clip.type, ClipType.image);
+    expect(clip.mediaPath, path);
+    expect(clip.mimeType, 'image/jpeg');
+    expect(clip.content, isEmpty);
+    expect(clip.byteSize, 1024);
+
+    final history = await repo.watchHistory().first;
+    expect(history, hasLength(1));
+    expect(history.single.type, ClipType.image);
+  });
+
+  test('image dedup: same path bumps usage instead of inserting', () async {
+    final path = await makeImageFile(512);
+    await repo.captureImage(mediaPath: path, mimeType: 'image/png');
+    await repo.captureImage(mediaPath: path, mimeType: 'image/png');
+
+    final history = await repo.watchHistory().first;
+    expect(history, hasLength(1));
+    expect(history.single.usageCount, 2);
+  });
+
+  test('different images create separate rows', () async {
+    final pathA = await makeImageFile(256);
+    final pathB = await makeImageFile(512);
+    await repo.captureImage(mediaPath: pathA, mimeType: 'image/jpeg');
+    await repo.captureImage(mediaPath: pathB, mimeType: 'image/webp');
+
+    final history = await repo.watchHistory().first;
+    expect(history, hasLength(2));
+  });
+
+  test('image clips are not searchable (no FTS entry)', () async {
+    final path = await makeImageFile(128);
+    await repo.captureImage(mediaPath: path, mimeType: 'image/jpeg');
+    await repo.capture(ev('a text clip to search for'));
+
+    // Image should appear in history but not in search results.
+    final history = await repo.watchHistory().first;
+    expect(history, hasLength(2));
+
+    final search = await repo.watchSearch('text').first;
+    expect(search, hasLength(1));
+    expect(search.single.content, contains('text clip'));
   });
 }
