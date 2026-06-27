@@ -26,4 +26,8 @@ class AppConstants {
   /// Play Store product id for the Snipt Pro one-time unlock. Must match
   /// the in-app product configured in Play Console.
   static const String proProductId = 'snipt_pro_unlock';
+
+  /// Free-tier soft cap on total media storage (non-pinned image clips).
+  /// Above this, the oldest non-pinned images are pruned. Pro users bypass.
+  static const int freeTierMediaBytes = 200 * 1024 * 1024; // 200 MB
 }

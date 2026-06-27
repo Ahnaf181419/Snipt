@@ -15,10 +15,18 @@ import 'package:pigeon/pigeon.dart';
 enum CaptureSourceDto { share, processText, tile, bubble, manual, unknown }
 
 class CapturePayload {
-  CapturePayload(this.content, this.source, this.sourceApp);
+  CapturePayload(
+    this.content,
+    this.source,
+    this.sourceApp, {
+    this.mediaPath,
+    this.mimeType,
+  });
   String content;
   CaptureSourceDto source;
   String? sourceApp;
+  String? mediaPath;
+  String? mimeType;
 }
 
 /// Dart -> Native: controls and synchronous clipboard access (only meaningful
@@ -46,6 +54,20 @@ abstract class CaptureHostApi {
 
   /// Writes [text] back to the system clipboard (used by tap-to-copy).
   void copyToClipboard(String text);
+
+  /// Streams the image file at [mediaPath] into the system clipboard as a URI.
+  /// Returns false if the file is missing or the OS rejects it.
+  bool copyImageToClipboard(String mediaPath);
+
+  /// Saves the image at [mediaPath] to the user's gallery via MediaStore
+  /// (scoped storage on API 29+). Returns the public URI on success, null on
+  /// failure (e.g. permission denied).
+  String? saveImageToGallery(String mediaPath, String mimeType);
+
+  /// Copies a picked image from [srcPath] (e.g. image_picker cache) into the
+  /// app's filesDir/media/ directory so it persists independently of the
+  /// source. Returns the new absolute path, or null on failure.
+  String? importImageFromPath(String srcPath, String mimeType);
 }
 
 /// Native -> Dart: delivers a captured payload for persistence.

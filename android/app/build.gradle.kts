@@ -44,6 +44,9 @@ android {
     // download is ~3x smaller. AABs handle this automatically via Play Store
     // dynamic delivery, so we only enable splits for the assemble variant.
     if (gradle.startParameter.taskNames.any { it.contains("assemble") }) {
+        // The Flutter Gradle Plugin injects ndk abiFilters for all target
+        // platforms, which conflicts with splits. Clear them first.
+        defaultConfig.ndk.abiFilters.clear()
         splits {
             abi {
                 isEnable = true

@@ -123,6 +123,8 @@ class CapturePayload {
     required this.content,
     required this.source,
     this.sourceApp,
+    this.mediaPath,
+    this.mimeType,
   });
 
   String content;
@@ -131,11 +133,17 @@ class CapturePayload {
 
   String? sourceApp;
 
+  String? mediaPath;
+
+  String? mimeType;
+
   List<Object?> _toList() {
     return <Object?>[
       content,
       source,
       sourceApp,
+      mediaPath,
+      mimeType,
     ];
   }
 
@@ -148,6 +156,8 @@ class CapturePayload {
       content: result[0]! as String,
       source: result[1]! as CaptureSourceDto,
       sourceApp: result[2] as String?,
+      mediaPath: result[3] as String?,
+      mimeType: result[4] as String?,
     );
   }
 
@@ -160,7 +170,7 @@ class CapturePayload {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(content, other.content) && _deepEquals(source, other.source) && _deepEquals(sourceApp, other.sourceApp);
+    return _deepEquals(content, other.content) && _deepEquals(source, other.source) && _deepEquals(sourceApp, other.sourceApp) && _deepEquals(mediaPath, other.mediaPath) && _deepEquals(mimeType, other.mimeType);
   }
 
   @override
@@ -388,6 +398,71 @@ class CaptureHostApi {
         isNullValid: true,
     )
     ;
+  }
+
+  /// Streams the image file at [mediaPath] into the system clipboard as a URI.
+  /// Returns false if the file is missing or the OS rejects it.
+  Future<bool> copyImageToClipboard(String mediaPath) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.snipt.CaptureHostApi.copyImageToClipboard$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[mediaPath]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
+  /// Saves the image at [mediaPath] to the user's gallery via MediaStore
+  /// (scoped storage on API 29+). Returns the public URI on success, null on
+  /// failure (e.g. permission denied).
+  Future<String?> saveImageToGallery(String mediaPath, String mimeType) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.snipt.CaptureHostApi.saveImageToGallery$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[mediaPath, mimeType]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as String?;
+  }
+
+  /// Copies a picked image from [srcPath] (e.g. image_picker cache) into the
+  /// app's filesDir/media/ directory so it persists independently of the
+  /// source. Returns the new absolute path, or null on failure.
+  Future<String?> importImageFromPath(String srcPath, String mimeType) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.snipt.CaptureHostApi.importImageFromPath$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[srcPath, mimeType]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as String?;
   }
 }
 

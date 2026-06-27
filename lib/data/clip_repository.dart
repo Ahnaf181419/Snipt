@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
@@ -125,6 +126,94 @@ class ClipRepository {
     });
   }
 
+  /// Persist an image capture. Dedup is keyed on the file path's hash so
+  /// re-sharing the same photo doesn't create a duplicate. Image rows have
+  /// empty [content] and no FTS entry.
+  Future<Clip> captureImage({
+    required String mediaPath,
+    required String mimeType,
+    String? sourceApp,
+  }) async {
+    final hash = sha256.convert(utf8.encode('image:$mediaPath')).toString();
+    final now = DateTime.now();
+    final file = File(mediaPath);
+    final size = await file.length();
+
+    return _db.transaction(() async {
+      final existing = await (_db.select(_db.clips)
+            ..where((t) => t.contentHash.equals(hash)))
+          .getSingleOrNull();
+      if (existing != null) {
+        final refreshed = existing.copyWith(
+          updatedAt: now,
+          usageCount: existing.usageCount + 1,
+          deletedAt: const Value(null),
+          sourceApp: Value(sourceApp ?? existing.sourceApp),
+        );
+        await _db.update(_db.clips).replace(refreshed);
+        return refreshed;
+      }
+
+      if (!isProSupplier()) {
+        await _enforceMediaSizeCap(size);
+      }
+
+      final clip = Clip(
+        id: _uuid.v4(),
+        type: ClipType.image,
+        content: '',
+        contentHash: hash,
+        byteSize: size,
+        isPinned: false,
+        sourceApp: sourceApp,
+        usageCount: 1,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        mediaPath: mediaPath,
+        mimeType: mimeType,
+      );
+      await _db.into(_db.clips).insert(clip);
+      return clip;
+    });
+  }
+
+  /// Drops oldest non-pinned, non-tombstoned image clips (and unlinks their
+  /// files) until total media bytes + [incomingBytes] fits within the
+  /// free-tier budget. No-op for Pro users.
+  Future<void> _enforceMediaSizeCap(int incomingBytes) async {
+    final images = await (_db.select(_db.clips)
+          ..where((t) =>
+              t.type.equals(ClipType.image.index) &
+              t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.updatedAt)]))
+        .get();
+    final totalBytes = images.fold<int>(0, (sum, c) => sum + c.byteSize);
+    if (totalBytes + incomingBytes <= AppConstants.freeTierMediaBytes) return;
+
+    var budget = totalBytes + incomingBytes - AppConstants.freeTierMediaBytes;
+    for (final clip in images) {
+      if (clip.isPinned) continue;
+      if (budget <= 0) break;
+      await _unlinkMedia(clip.mediaPath);
+      await _db.customStatement('DELETE FROM clip_fts WHERE id = ?', [clip.id]);
+      await (_db.delete(_db.clips)..where((t) => t.id.equals(clip.id))).go();
+      budget -= clip.byteSize;
+    }
+  }
+
+  /// Deletes the media file at [path] if it exists. Swallows errors so a
+  /// missing file never blocks a DB transaction.
+  Future<void> _unlinkMedia(String? path) async {
+    if (path == null) return;
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // Best-effort: a missing file is not a failure.
+    }
+  }
+
   /// Removes the oldest non-pinned, non-tombstoned rows so that the active
   /// row count is below [AppConstants.freeTierClipCap]. Leaves a 5% margin
   /// so a small burst of captures doesn't trigger a prune on every single
@@ -147,6 +236,7 @@ class ClipRepository {
           ..limit(excess))
         .get();
     for (final v in victims) {
+      await _unlinkMedia(v.mediaPath);
       await _db.customStatement('DELETE FROM clip_fts WHERE id = ?', [v.id]);
     }
     final ids = victims.map((v) => v.id).toList();
@@ -206,6 +296,9 @@ class ClipRepository {
                 t.updatedAt.isSmallerThanValue(cutoff)))
           .get();
       if (victims.isEmpty) return 0;
+      for (final c in victims) {
+        await _unlinkMedia(c.mediaPath);
+      }
       final ids = victims.map((c) => c.id).toList();
       await (_db.delete(_db.clips)..where((t) => t.id.isIn(ids))).go();
       for (final id in ids) {

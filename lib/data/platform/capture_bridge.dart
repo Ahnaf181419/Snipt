@@ -29,6 +29,18 @@ class CaptureBridge extends CaptureFlutterApi {
 
   @override
   void onClipCaptured(CapturePayload payload) {
+    // Image payloads: mediaPath is set, content is empty.
+    if (payload.mediaPath != null) {
+      unawaited(
+        _repo.captureImage(
+          mediaPath: payload.mediaPath!,
+          mimeType: payload.mimeType ?? 'image/jpeg',
+          sourceApp: payload.sourceApp,
+        ),
+      );
+      return;
+    }
+    // Text payloads: content must be non-empty.
     final content = payload.content.trim();
     if (content.isEmpty) return;
     unawaited(

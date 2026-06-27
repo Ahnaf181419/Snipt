@@ -218,7 +218,9 @@ enum class CaptureSourceDto(val raw: Int) {
 data class CapturePayload (
   val content: String,
   val source: CaptureSourceDto,
-  val sourceApp: String? = null
+  val sourceApp: String? = null,
+  val mediaPath: String? = null,
+  val mimeType: String? = null
 )
  {
   companion object {
@@ -226,7 +228,9 @@ data class CapturePayload (
       val content = pigeonVar_list[0] as String
       val source = pigeonVar_list[1] as CaptureSourceDto
       val sourceApp = pigeonVar_list[2] as String?
-      return CapturePayload(content, source, sourceApp)
+      val mediaPath = pigeonVar_list[3] as String?
+      val mimeType = pigeonVar_list[4] as String?
+      return CapturePayload(content, source, sourceApp, mediaPath, mimeType)
     }
   }
   fun toList(): List<Any?> {
@@ -234,6 +238,8 @@ data class CapturePayload (
       content,
       source,
       sourceApp,
+      mediaPath,
+      mimeType,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -244,7 +250,7 @@ data class CapturePayload (
       return true
     }
     val other = other as CapturePayload
-    return CaptureApiPigeonUtils.deepEquals(this.content, other.content) && CaptureApiPigeonUtils.deepEquals(this.source, other.source) && CaptureApiPigeonUtils.deepEquals(this.sourceApp, other.sourceApp)
+    return CaptureApiPigeonUtils.deepEquals(this.content, other.content) && CaptureApiPigeonUtils.deepEquals(this.source, other.source) && CaptureApiPigeonUtils.deepEquals(this.sourceApp, other.sourceApp) && CaptureApiPigeonUtils.deepEquals(this.mediaPath, other.mediaPath) && CaptureApiPigeonUtils.deepEquals(this.mimeType, other.mimeType)
   }
 
   override fun hashCode(): Int {
@@ -252,6 +258,8 @@ data class CapturePayload (
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.content)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.source)
     result = 31 * result + CaptureApiPigeonUtils.deepHash(this.sourceApp)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.mediaPath)
+    result = 31 * result + CaptureApiPigeonUtils.deepHash(this.mimeType)
     return result
   }
 }
@@ -314,6 +322,23 @@ interface CaptureHostApi {
   fun readClipboardNow(): CapturePayload?
   /** Writes [text] back to the system clipboard (used by tap-to-copy). */
   fun copyToClipboard(text: String)
+  /**
+   * Streams the image file at [mediaPath] into the system clipboard as a URI.
+   * Returns false if the file is missing or the OS rejects it.
+   */
+  fun copyImageToClipboard(mediaPath: String): Boolean
+  /**
+   * Saves the image at [mediaPath] to the user's gallery via MediaStore
+   * (scoped storage on API 29+). Returns the public URI on success, null on
+   * failure (e.g. permission denied).
+   */
+  fun saveImageToGallery(mediaPath: String, mimeType: String): String?
+  /**
+   * Copies a picked image from [srcPath] (e.g. image_picker cache) into the
+   * app's filesDir/media/ directory so it persists independently of the
+   * source. Returns the new absolute path, or null on failure.
+   */
+  fun importImageFromPath(srcPath: String, mimeType: String): String?
 
   companion object {
     /** The codec used by CaptureHostApi. */
@@ -457,6 +482,59 @@ interface CaptureHostApi {
             val wrapped: List<Any?> = try {
               api.copyToClipboard(textArg)
               listOf(null)
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.snipt.CaptureHostApi.copyImageToClipboard$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val mediaPathArg = args[0] as String
+            val wrapped: List<Any?> = try {
+              listOf(api.copyImageToClipboard(mediaPathArg))
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.snipt.CaptureHostApi.saveImageToGallery$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val mediaPathArg = args[0] as String
+            val mimeTypeArg = args[1] as String
+            val wrapped: List<Any?> = try {
+              listOf(api.saveImageToGallery(mediaPathArg, mimeTypeArg))
+            } catch (exception: Throwable) {
+              CaptureApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.snipt.CaptureHostApi.importImageFromPath$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val srcPathArg = args[0] as String
+            val mimeTypeArg = args[1] as String
+            val wrapped: List<Any?> = try {
+              listOf(api.importImageFromPath(srcPathArg, mimeTypeArg))
             } catch (exception: Throwable) {
               CaptureApiPigeonUtils.wrapError(exception)
             }

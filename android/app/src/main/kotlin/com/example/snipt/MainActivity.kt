@@ -3,12 +3,17 @@ package com.example.snipt
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.provider.MediaStore
 import android.provider.Settings
+import androidx.core.content.FileProvider
+import java.io.File
+import java.util.UUID
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.snipt.capture.CaptureFlutterApi
@@ -84,9 +89,29 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
     private fun handleIntent(intent: Intent?) {
         when (intent?.action) {
             Intent.ACTION_SEND -> {
-                val text = intent.getStringExtra(Intent.EXTRA_TEXT)
-                if (!text.isNullOrBlank()) {
-                    dispatch(CapturePayload(text, CaptureSourceDto.SHARE, null))
+                val type = intent.type
+                if (type != null && type.startsWith("image/")) {
+                    @Suppress("DEPRECATION")
+                    val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                    if (uri != null) {
+                        val savedPath = copyImageToInternal(uri, type)
+                        if (savedPath != null) {
+                            dispatch(
+                                CapturePayload(
+                                    content = "",
+                                    source = CaptureSourceDto.SHARE,
+                                    sourceApp = null,
+                                    mediaPath = savedPath,
+                                    mimeType = type,
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+                    if (!text.isNullOrBlank()) {
+                        dispatch(CapturePayload(text, CaptureSourceDto.SHARE, null))
+                    }
                 }
             }
             Intent.ACTION_PROCESS_TEXT -> {
@@ -116,6 +141,30 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
         val api = flutterApi ?: return
         pending.forEach { api.onClipCaptured(it) {} }
         pending.clear()
+    }
+
+    /// Streams a content:// URI into filesDir/media/<uuid>.<ext>. Never Bitmap-
+    /// decodes — large camera-roll photos OOM easily. Returns the absolute path
+    /// on success, null on failure.
+    private fun copyImageToInternal(uri: Uri, mime: String): String? {
+        val ext = when (mime) {
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            "image/gif" -> "gif"
+            else -> "jpg"
+        }
+        val outFile = File(filesDir, "media/${UUID.randomUUID()}.$ext")
+        outFile.parentFile?.mkdirs()
+        return try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                outFile.outputStream().use { output ->
+                    input.copyTo(output, bufferSize = 64 * 1024)
+                }
+            }
+            outFile.absolutePath
+        } catch (e: Exception) {
+            null
+        }
     }
 
     // region CaptureHostApi (Dart -> native)
@@ -187,6 +236,78 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
         // re-dispatch (and double-count usageCount) when the user returns
         // to snipt after copying a clip from within the app.
         lastFocusDispatchedContent = text
+    }
+
+    override fun copyImageToClipboard(mediaPath: String): Boolean {
+        val file = File(mediaPath)
+        if (!file.exists()) return false
+        return try {
+            val authority = "$packageName.fileprovider"
+            val uri = FileProvider.getUriForFile(this, authority, file)
+            val clip = ClipData.newUri(contentResolver, "snipt-image", uri)
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(clip)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override fun saveImageToGallery(mediaPath: String, mimeType: String): String? {
+        val file = File(mediaPath)
+        if (!file.exists()) return null
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, file.name)
+            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/snipt")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+        }
+        val resolver = contentResolver
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+        val uri = resolver.insert(collection, values) ?: return null
+        return try {
+            resolver.openOutputStream(uri)?.use { out ->
+                file.inputStream().use { it.copyTo(out) }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+            }
+            uri.toString()
+        } catch (e: Exception) {
+            resolver.delete(uri, null, null)
+            null
+        }
+    }
+
+    override fun importImageFromPath(srcPath: String, mimeType: String): String? {
+        val ext = when (mimeType) {
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            "image/gif" -> "gif"
+            else -> "jpg"
+        }
+        val srcFile = File(srcPath)
+        if (!srcFile.exists()) return null
+        val outFile = File(filesDir, "media/${UUID.randomUUID()}.$ext")
+        outFile.parentFile?.mkdirs()
+        return try {
+            srcFile.inputStream().use { input ->
+                outFile.outputStream().use { output ->
+                    input.copyTo(output, bufferSize = 64 * 1024)
+                }
+            }
+            outFile.absolutePath
+        } catch (e: Exception) {
+            null
+        }
     }
 
     override fun onRequestPermissionsResult(
