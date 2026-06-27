@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:share_plus/share_plus.dart';
 import 'billing/billing_providers.dart';
 import 'clip_repository.dart';
 import 'db/database.dart';
@@ -79,6 +79,33 @@ class ClipActions {
   Future<void> copy(Clip clip) async {
     await _bridge.host.copyToClipboard(clip.content);
     await _repo.bumpUsage(clip.id);
+  }
+
+  /// Copies an image clip to the system clipboard via the native side
+  /// (Flutter's Clipboard.setData cannot carry images on Android).
+  Future<bool> copyImage(Clip clip) async {
+    final path = clip.mediaPath;
+    if (path == null) return false;
+    final ok = await _bridge.host.copyImageToClipboard(path);
+    if (ok) await _repo.bumpUsage(clip.id);
+    return ok;
+  }
+
+  /// Saves an image clip to the device gallery via MediaStore. Returns the
+  /// public content URI, or null on failure.
+  Future<String?> saveImageToGallery(Clip clip) async {
+    final path = clip.mediaPath;
+    if (path == null) return null;
+    return _bridge.host.saveImageToGallery(path, clip.mimeType ?? 'image/jpeg');
+  }
+
+  /// Shares an image clip to another app via the system share sheet.
+  Future<void> shareImage(Clip clip) async {
+    final path = clip.mediaPath;
+    if (path == null) return;
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile(path)],
+    ));
   }
 
   Future<void> togglePin(Clip clip) => _repo.togglePin(clip.id, !clip.isPinned);

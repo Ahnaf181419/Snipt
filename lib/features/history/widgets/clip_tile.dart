@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/format.dart';
@@ -49,12 +51,15 @@ class ClipTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      clip.content,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    if (clip.type == ClipType.image && clip.mediaPath != null)
+                      _ImageThumb(path: clip.mediaPath!)
+                    else
+                      Text(
+                        clip.content,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -96,6 +101,35 @@ class ClipTile extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact thumbnail for image clips in the history list. Uses
+/// [Image.file] with a small cache width to keep memory low — the full-
+/// resolution decode would OOM the list on large camera-roll photos.
+class _ImageThumb extends StatelessWidget {
+  const _ImageThumb({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.file(
+        File(path),
+        width: double.infinity,
+        height: 120,
+        fit: BoxFit.cover,
+        cacheWidth: 300, // decode at ~300px wide to save memory
+        errorBuilder: (context, error, stack) => Container(
+          width: double.infinity,
+          height: 120,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Center(child: Icon(Icons.broken_image_outlined)),
         ),
       ),
     );
