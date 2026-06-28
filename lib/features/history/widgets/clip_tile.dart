@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/format.dart';
 import '../../../data/db/database.dart';
@@ -25,15 +26,15 @@ class ClipTile extends StatelessWidget {
   final VoidCallback onOpen;
 
   IconData get _typeIcon => switch (clip.type) {
-        ClipType.url => Icons.link,
-        ClipType.richText => Icons.article_outlined,
-        ClipType.text => Icons.notes,
-        ClipType.image => Icons.image_outlined,
+        ClipType.url => LucideIcons.link,
+        ClipType.richText => LucideIcons.fileText,
+        ClipType.text => LucideIcons.stickyNote,
+        ClipType.image => LucideIcons.image,
       };
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = ShadTheme.of(context);
     return Card(
       child: InkWell(
         onTap: onCopy,
@@ -45,7 +46,7 @@ class ClipTile extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.only(top: 2, right: 10),
-                child: Icon(_typeIcon, size: 20, color: scheme.primary),
+                child: Icon(_typeIcon, size: 20, color: theme.colorScheme.primary),
               ),
               Expanded(
                 child: Column(
@@ -58,22 +59,20 @@ class ClipTile extends StatelessWidget {
                         clip.content,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: theme.textTheme.p,
                       ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
                         if (clip.isPinned) ...[
-                          Icon(Icons.push_pin,
-                              size: 13, color: scheme.secondary),
+                          Icon(LucideIcons.pin,
+                              size: 13, color: theme.colorScheme.primary),
                           const SizedBox(width: 4),
                         ],
                         Text(
                           timeAgo(clip.createdAt),
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(color: scheme.outline),
+                          style: theme.textTheme.muted
+                              .copyWith(color: theme.colorScheme.mutedForeground),
                         ),
                       ],
                     ),
@@ -81,7 +80,7 @@ class ClipTile extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
+                icon: const Icon(LucideIcons.ellipsisVertical),
                 onSelected: (value) => switch (value) {
                   'copy' => onCopy(),
                   'pin' => onTogglePin(),
@@ -117,6 +116,7 @@ class _ImageThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Image.file(
@@ -124,12 +124,12 @@ class _ImageThumb extends StatelessWidget {
         width: double.infinity,
         height: 120,
         fit: BoxFit.cover,
-        cacheWidth: 300, // decode at ~300px wide to save memory
+        cacheWidth: 300,
         errorBuilder: (context, error, stack) => Container(
           width: double.infinity,
           height: 120,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(child: Icon(Icons.broken_image_outlined)),
+          color: theme.colorScheme.muted,
+          child: const Center(child: Icon(LucideIcons.imageOff)),
         ),
       ),
     );

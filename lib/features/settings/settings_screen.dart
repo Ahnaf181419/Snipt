@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../data/billing/billing_providers.dart';
 import '../../data/billing/billing_service.dart';
@@ -24,8 +25,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Sync the stored captureServiceEnabled flag with the actual running state
-    // so the switch isn't stale after the OS kills the service.
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncServiceState());
   }
 
@@ -39,9 +38,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (running != settings.captureServiceEnabled) {
         await controller.setCaptureServiceEnabled(running);
       }
-    } catch (_) {
-      // Platform not available in tests — ignore.
-    }
+    } catch (_) {}
   }
 
   Future<void> _toggleService(bool on) async {
@@ -66,9 +63,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(billingServiceProvider).buyPro();
-      // Outcome (success / error) flows through purchaseStatusProvider
-      // and the bootstrap listener, so no UI handling needed here beyond
-      // telling the user we kicked off the flow.
       messenger.showSnackBar(
         const SnackBar(content: Text('Opening Google Play…')),
       );
@@ -95,6 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
     final settings =
         ref.watch(settingsControllerProvider).value ?? const AppSettings();
     final bridge = ref.read(captureBridgeProvider);
@@ -106,19 +101,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          const _SectionHeader('Snipt Pro'),
+          _SectionHeader('Snipt Pro', theme: theme),
           if (isPro) ...[
-            const ListTile(
-              leading: Icon(Icons.workspace_premium, color: Colors.amber),
-              title: Text('Snipt Pro is active'),
-              subtitle: Text(
+            ListTile(
+              leading: const Icon(LucideIcons.crown, color: Colors.amber),
+              title: const Text('Snipt Pro is active'),
+              subtitle: const Text(
                 'Thanks for supporting local-first clipboard history.',
               ),
             ),
           ] else ...[
             const _ProBenefitsTile(),
             ListTile(
-              leading: const Icon(Icons.shopping_bag_outlined),
+              leading: const Icon(LucideIcons.shoppingBag),
               title: const Text('Upgrade to Pro'),
               subtitle: Text(_upgradeSubtitle(purchaseStatus)),
               trailing: purchaseStatus == PurchaseStatus.pending
@@ -127,38 +122,67 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.chevron_right),
+                  : const Icon(LucideIcons.chevronRight),
               onTap: purchaseStatus == PurchaseStatus.pending
                   ? null
                   : _buyPro,
             ),
             ListTile(
-              leading: const Icon(Icons.refresh),
+              leading: const Icon(LucideIcons.refreshCw),
               title: const Text('Restore purchases'),
               onTap: _restorePurchases,
             ),
           ],
-          const _SectionHeader('Capture'),
-          SwitchListTile(
-            title: const Text('Capture service'),
-            subtitle: const Text(
-              'Runs a persistent notification with a one-tap Capture action.',
+          _SectionHeader('Capture', theme: theme),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Capture service',
+                          style: theme.textTheme.p
+                              .copyWith(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Runs a persistent notification with a one-tap Capture action.',
+                        style: theme.textTheme.muted
+                            .copyWith(color: theme.colorScheme.mutedForeground),
+                      ),
+                    ],
+                  ),
+                ),
+                ShadSwitch(
+                  value: settings.captureServiceEnabled,
+                  onChanged: _toggleService,
+                ),
+              ],
             ),
-            value: settings.captureServiceEnabled,
-            onChanged: _toggleService,
           ),
           ListTile(
+            leading: const Icon(LucideIcons.layers),
             title: const Text('Floating bubble permission'),
             subtitle: const Text('Allow drawing over other apps.'),
-            trailing: const Icon(Icons.open_in_new),
+            trailing: const Icon(LucideIcons.externalLink),
             onTap: () => bridge.host.requestOverlayPermission(),
           ),
-          const _SectionHeader('Storage'),
+          _SectionHeader('Storage', theme: theme),
           ListTile(
             title: const Text('Keep history for'),
             subtitle: const Text('Pinned clips are never auto-deleted.'),
-            trailing: DropdownButton<int>(
-              value: settings.retentionDays,
+            trailing: ShadSelect<int>(
+              options: [
+                for (final e in _retentionOptions.entries)
+                  ShadOption(
+                    value: e.key,
+                    child: Text(e.value),
+                  ),
+              ],
+              selectedOptionBuilder: (context, value) =>
+                  Text(_retentionOptions[value] ?? '30 days'),
+              initialValue: settings.retentionDays,
               onChanged: (v) {
                 if (v != null) {
                   ref
@@ -166,17 +190,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       .setRetentionDays(v);
                 }
               },
-              items: [
-                for (final e in _retentionOptions.entries)
-                  DropdownMenuItem(value: e.key, child: Text(e.value)),
-              ],
             ),
           ),
-          const _SectionHeader('About'),
-          const ListTile(
-            leading: Icon(Icons.shield_outlined),
-            title: Text('Local-first & private'),
-            subtitle: Text(
+          _SectionHeader('About', theme: theme),
+          ListTile(
+            leading: const Icon(LucideIcons.shieldCheck),
+            title: const Text('Local-first & private'),
+            subtitle: const Text(
               'Clips are stored only on this device. Nothing is uploaded.\n\n'
               'Android blocks background clipboard reads, so snipt captures '
               'via the Capture action, the Quick-Settings tile, the share '
@@ -203,14 +223,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-/// Compact list of Pro benefits. Kept here (not in the upgrade dialog) so
-/// the value is visible before the user commits to opening Google Play.
 class _ProBenefitsTile extends StatelessWidget {
   const _ProBenefitsTile();
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = ShadTheme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(
@@ -218,15 +236,19 @@ class _ProBenefitsTile extends StatelessWidget {
         children: [
           Text(
             'Pro unlocks',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: scheme.primary,
-                ),
+            style: theme.textTheme.small.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 4),
-          const Text('• Unlimited clip history (free tier: 200)'),
-          const Text('• Export & import your clips'),
-          const Text('• Auto-clear timer for the system clipboard'),
-          const Text('• Home-screen quick-capture widget'),
+          Text('• Unlimited clip history (free tier: 200)',
+              style: theme.textTheme.muted),
+          Text('• Export & import your clips', style: theme.textTheme.muted),
+          Text('• Auto-clear timer for the system clipboard',
+              style: theme.textTheme.muted),
+          Text('• Home-screen quick-capture widget',
+              style: theme.textTheme.muted),
         ],
       ),
     );
@@ -234,9 +256,10 @@ class _ProBenefitsTile extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
+  const _SectionHeader(this.title, {required this.theme});
 
   final String title;
+  final ShadThemeData theme;
 
   @override
   Widget build(BuildContext context) {
@@ -244,10 +267,11 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: Text(
         title.toUpperCase(),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              letterSpacing: 0.8,
-            ),
+        style: theme.textTheme.small.copyWith(
+          color: theme.colorScheme.primary,
+          letterSpacing: 0.8,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

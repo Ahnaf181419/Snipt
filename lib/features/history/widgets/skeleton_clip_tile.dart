@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 /// A shimmer skeleton placeholder matching the ClipTile layout shape.
 /// Shown while the database stream is loading its first batch.
@@ -30,9 +31,9 @@ class _SkeletonClipTileState extends State<SkeletonClipTile>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final baseColor = scheme.surfaceContainerHigh;
-    final highlightColor = scheme.surfaceContainerHighest;
+    final theme = ShadTheme.of(context);
+    final baseColor = theme.colorScheme.muted;
+    final highlightColor = theme.colorScheme.accent;
 
     return Card(
       child: Padding(
@@ -40,7 +41,6 @@ class _SkeletonClipTileState extends State<SkeletonClipTile>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon placeholder
             _ShimmerBox(
               controller: _controller,
               baseColor: baseColor,
@@ -50,7 +50,6 @@ class _SkeletonClipTileState extends State<SkeletonClipTile>
               radius: 4,
             ),
             const SizedBox(width: 10),
-            // Text lines + metadata
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../core/format.dart';
 import '../../data/db/database.dart';
@@ -10,11 +11,6 @@ import '../../data/providers.dart';
 import '../../domain/models/clip_type.dart';
 
 /// Full view of a single clip with its metadata and actions.
-///
-/// For text clips the primary action is "Copy" (re-copy to system clipboard).
-/// For image clips the primary actions are "Copy image", "Save to gallery",
-/// and "Share" — all routed through the native side because Flutter's
-/// [Clipboard.setData] cannot carry images on Android.
 class ClipDetailScreen extends ConsumerWidget {
   const ClipDetailScreen({super.key, required this.clip});
 
@@ -24,8 +20,8 @@ class ClipDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = ShadTheme.of(context);
     final actions = ref.read(clipActionsProvider);
-    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -33,8 +29,7 @@ class ClipDetailScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: clip.isPinned ? 'Unpin' : 'Pin',
-            icon:
-                Icon(clip.isPinned ? Icons.push_pin : Icons.push_pin_outlined),
+            icon: Icon(clip.isPinned ? LucideIcons.pin : LucideIcons.pinOff),
             onPressed: () async {
               await actions.togglePin(clip);
               if (context.mounted) context.pop();
@@ -42,7 +37,7 @@ class ClipDetailScreen extends ConsumerWidget {
           ),
           IconButton(
             tooltip: 'Delete',
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(LucideIcons.trash2),
             onPressed: () async {
               await actions.delete(clip.id);
               if (context.mounted) context.pop();
@@ -57,14 +52,14 @@ class ClipDetailScreen extends ConsumerWidget {
                 FloatingActionButton.extended(
                   heroTag: 'copyImg',
                   onPressed: () => _copyImage(context, actions),
-                  icon: const Icon(Icons.copy),
+                  icon: const Icon(LucideIcons.copy),
                   label: const Text('Copy'),
                 ),
                 const SizedBox(width: 12),
                 FloatingActionButton.extended(
                   heroTag: 'saveImg',
                   onPressed: () => _saveImage(context, actions),
-                  icon: const Icon(Icons.save_alt),
+                  icon: const Icon(LucideIcons.download),
                   label: const Text('Save'),
                 ),
               ],
@@ -78,25 +73,22 @@ class ClipDetailScreen extends ConsumerWidget {
                   );
                 }
               },
-              icon: const Icon(Icons.copy),
+              icon: const Icon(LucideIcons.copy),
               label: const Text('Copy'),
             ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         children: [
           if (_isImage) ...[
-            _FullImagePreview(
-              path: clip.mediaPath!,
-              onShare: () => actions.shareImage(clip),
-            ),
+            _FullImagePreview(path: clip.mediaPath!),
             const SizedBox(height: 16),
           ] else
             SelectableText(
               clip.content,
-              style: Theme.of(context).textTheme.bodyLarge,
+              style: theme.textTheme.large,
             ),
           const SizedBox(height: 24),
-          Divider(color: scheme.outlineVariant),
+          Divider(color: theme.colorScheme.border),
           _meta(context, 'Type', clip.type.name),
           _meta(context, 'Saved', timeAgo(clip.createdAt)),
           _meta(context, 'Used', '${clip.usageCount}\u00d7'),
@@ -132,6 +124,7 @@ class ClipDetailScreen extends ConsumerWidget {
   }
 
   Widget _meta(BuildContext context, String label, String value) {
+    final theme = ShadTheme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -139,9 +132,8 @@ class ClipDetailScreen extends ConsumerWidget {
           SizedBox(
             width: 88,
             child: Text(label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    )),
+                style: theme.textTheme.small
+                    .copyWith(color: theme.colorScheme.mutedForeground)),
           ),
           Expanded(child: Text(value)),
         ],
@@ -152,15 +144,20 @@ class ClipDetailScreen extends ConsumerWidget {
 
 /// Full-resolution image preview for the detail screen, with tap-to-share.
 class _FullImagePreview extends StatelessWidget {
-  const _FullImagePreview({required this.path, required this.onShare});
+  const _FullImagePreview({required this.path});
 
   final String path;
-  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
     return GestureDetector(
-      onLongPress: onShare,
+      onLongPress: () {
+        final container = ProviderScope.containerOf(context);
+        container.read(clipActionsProvider).shareImage(
+              context.findAncestorWidgetOfExactType<ClipDetailScreen>()!.clip,
+            );
+      },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.file(
@@ -168,8 +165,9 @@ class _FullImagePreview extends StatelessWidget {
           fit: BoxFit.contain,
           errorBuilder: (context, error, stack) => Container(
             height: 200,
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: const Center(child: Icon(Icons.broken_image_outlined, size: 48)),
+            color: theme.colorScheme.muted,
+            child: const Center(
+                child: Icon(LucideIcons.imageOff, size: 48)),
           ),
         ),
       ),

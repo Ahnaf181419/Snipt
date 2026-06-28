@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../core/haptics.dart';
 import '../../data/db/database.dart';
@@ -27,8 +28,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    // Restore any active search query so the text field matches the list state
-    // if the screen is rebuilt while a search is in progress.
     _searchController =
         TextEditingController(text: ref.read(searchQueryProvider));
     _runRetention();
@@ -40,7 +39,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     super.dispose();
   }
 
-  /// Prune expired, non-pinned clips once per launch.
   Future<void> _runRetention() async {
     final settings = await ref.read(settingsControllerProvider.future);
     if (!mounted) return;
@@ -51,8 +49,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     await ref.read(clipRepositoryProvider).prune(cutoff);
   }
 
-  /// Reads the current clipboard via the native bridge (avoids duplicating the
-  /// same logic that lives in [CaptureBridge.captureFromClipboard]).
   Future<void> _captureFromClipboard() async {
     final messenger = ScaffoldMessenger.of(context);
     await Haptics.light();
@@ -66,14 +62,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  /// Opens the system gallery picker, imports the selected image into the
-  /// app's filesDir/media/ via the native side, and persists it.
   Future<void> _pickImage() async {
     final messenger = ScaffoldMessenger.of(context);
     await Haptics.light();
     final picker = ImagePicker();
     final xFile = await picker.pickImage(source: ImageSource.gallery);
-    if (xFile == null) return; // user cancelled
+    if (xFile == null) return;
 
     final bridge = ref.read(captureBridgeProvider);
     final mimeType = xFile.mimeType ?? 'image/jpeg';
@@ -96,8 +90,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  /// Shows a bottom sheet letting the user choose between capturing clipboard
-  /// text or picking an image from the gallery.
   void _showCaptureSheet() {
     showModalBottomSheet<void>(
       context: context,
@@ -106,7 +98,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.content_paste),
+              leading: const Icon(LucideIcons.clipboard),
               title: const Text('Capture clipboard text'),
               onTap: () {
                 Navigator.pop(context);
@@ -114,7 +106,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.image_outlined),
+              leading: const Icon(LucideIcons.image),
               title: const Text('Pick image from gallery'),
               onTap: () {
                 Navigator.pop(context);
@@ -163,7 +155,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           content: const Text('Deleted'),
           action: SnackBarAction(
             label: 'Undo',
-            // Text clips: re-capture restores content and clears the tombstone.
             onPressed: () => ref.read(clipRepositoryProvider).capture(
                   CaptureEvent(
                       content: clip.content, sourceApp: clip.sourceApp),
@@ -176,6 +167,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
     final clips = ref.watch(clipListProvider);
     final query = ref.watch(searchQueryProvider);
     final settings = ref.watch(settingsControllerProvider).value;
@@ -185,7 +177,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         title: const Text('snipt'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(LucideIcons.settings),
             onPressed: () => context.push('/settings'),
             tooltip: 'Settings',
           ),
@@ -193,34 +185,33 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCaptureSheet,
-        icon: const Icon(Icons.add),
+        icon: const Icon(LucideIcons.plus),
         label: const Text('Capture'),
       ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: TextField(
+            child: ShadInput(
               controller: _searchController,
+              placeholder: const Text('Search clips'),
+              leading: Icon(LucideIcons.search, size: 18,
+                  color: theme.colorScheme.mutedForeground),
               onChanged: (v) {
                 ref.read(searchQueryProvider.notifier).set(v);
                 setState(() {});
               },
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search clips',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          ref.read(searchQueryProvider.notifier).clear();
-                          setState(() {});
-                        },
-                      ),
-              ),
+              trailing: _searchController.text.isEmpty
+                  ? null
+                  : ShadIconButton.ghost(
+                      icon: Icon(LucideIcons.x, size: 16,
+                          color: theme.colorScheme.mutedForeground),
+                      onPressed: () {
+                        _searchController.clear();
+                        ref.read(searchQueryProvider.notifier).clear();
+                        setState(() {});
+                      },
+                    ),
             ),
           ),
           if (settings != null && !settings.captureServiceEnabled)
@@ -229,7 +220,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             child: clips.when(
               loading: () => const SkeletonClipList(),
               error: (e, _) => EmptyState(
-                icon: Icons.error_outline,
+                icon: LucideIcons.circleAlert,
                 title: 'Something went wrong',
                 subtitle: '$e',
               ),
@@ -245,12 +236,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (items.isEmpty) {
       return query.trim().isNotEmpty
           ? const EmptyState(
-              icon: Icons.search_off,
+              icon: LucideIcons.searchX,
               title: 'No matches found',
               subtitle: 'Try a different search term',
             )
           : const EmptyState(
-              icon: Icons.assignment_outlined,
+              icon: LucideIcons.clipboardList,
               title: 'No clips yet',
               subtitle: 'Copy text anywhere, then tap Capture to save it',
             );
@@ -266,7 +257,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           background: Container(
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 24),
-            child: const Icon(Icons.delete_outline),
+            child: const Icon(LucideIcons.trash2),
           ),
           onDismissed: (_) => _delete(clip),
           child: ClipTile(
@@ -292,24 +283,25 @@ class _SetupBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = ShadTheme.of(context);
     return Material(
-      color: scheme.secondaryContainer,
+      color: theme.colorScheme.accent,
       child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Icon(Icons.bolt, color: scheme.onSecondaryContainer),
+              Icon(LucideIcons.zap, color: theme.colorScheme.accentForeground),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Finish capture setup to save clips faster',
-                  style: TextStyle(color: scheme.onSecondaryContainer),
+                  style: TextStyle(color: theme.colorScheme.accentForeground),
                 ),
               ),
-              Icon(Icons.chevron_right, color: scheme.onSecondaryContainer),
+              Icon(LucideIcons.chevronRight,
+                  color: theme.colorScheme.accentForeground),
             ],
           ),
         ),
