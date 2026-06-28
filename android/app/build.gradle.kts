@@ -40,10 +40,13 @@ android {
         versionName = flutter.versionName
     }
 
-    // When building APKs (not AABs), split per CPU architecture so each
-    // download is ~3x smaller. AABs handle this automatically via Play Store
-    // dynamic delivery, so we only enable splits for the assemble variant.
-    if (gradle.startParameter.taskNames.any { it.contains("assemble") }) {
+    // Only split release APKs per CPU architecture so each download is ~3x
+    // smaller. Debug builds produce a single universal APK — Flutter's
+    // tooling expects app-debug.apk, not architecture-suffixed files.
+    // AABs handle splitting automatically via Play Store dynamic delivery.
+    if (gradle.startParameter.taskNames.any {
+            it.contains("assemble") && it.contains("Release")
+        }) {
         // The Flutter Gradle Plugin injects ndk abiFilters for all target
         // platforms, which conflicts with splits. Clear them first.
         defaultConfig.ndk.abiFilters.clear()
@@ -52,7 +55,7 @@ android {
                 isEnable = true
                 reset()
                 include("armeabi-v7a", "arm64-v8a", "x86_64")
-                isUniversalApk = false
+                isUniversalApk = true
             }
         }
     }
