@@ -25,12 +25,9 @@ class SniptApp extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline, size: 48),
+                  const Icon(LucideIcons.triangleAlert, size: 48),
                   const SizedBox(height: 16),
-                  Text(
-                    'Something went wrong',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  const Text('Something went wrong'),
                 ],
               ),
             ),
