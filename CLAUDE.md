@@ -24,7 +24,7 @@ Feature-first layers. Capture is native Kotlin; Flutter is the UI + store.
 
 ```
 lib/
-  app/         MaterialApp, theme (M3 + dynamic color), go_router
+  app/         ShadApp (shadcn/ui), theme (zinc neutrals), go_router
   core/        constants, formatting helpers
   data/
     db/        Drift database (Clips table + FTS5), generated code
@@ -53,7 +53,8 @@ can wrap `ClipRepository`.
 ## Stack
 Flutter 3.44 / Dart 3.12 · Riverpod 3 (manual providers; core API, not the
 prerelease generator) · Drift 2.33 + sqlite3 · freezed 3 · go_router 17 ·
-dynamic_color · local_auth 3 · flutter_secure_storage 10 · Pigeon 26.
+shadcn_ui 0.55 (shadcn/ui port, replaces Material) · lucide_icons_flutter ·
+flutter_secure_storage 10 · Pigeon 26.
 
 ## Commands
 - `flutter pub get`
@@ -67,8 +68,10 @@ dynamic_color · local_auth 3 · flutter_secure_storage 10 · Pigeon 26.
 ## Conventions / gotchas
 - Riverpod 3: `AsyncValue.value` is the nullable accessor (no `valueOrNull`);
   `StateProvider` lives in `package:flutter_riverpod/legacy.dart`.
-- local_auth 3: `authenticate()` takes named params directly
-  (`persistAcrossBackgrounding`), not an `AuthenticationOptions` object.
+- shadcn_ui: theme access via `ShadTheme.of(context)`. `ShadApp.router` builds
+  `WidgetsApp.router` (not MaterialApp) so `ScaffoldMessenger` is bridged via
+  the `builder:` wrapper in `app.dart`. Scaffold/AppBar still work because
+  ShadApp provides a `ThemeData` via `AnimatedTheme`.
 - All SQL stays in `ClipRepository`; widgets use `ClipActions` / providers.
 - Generated files (`*.g.dart`, `*.freezed.dart`, `*.g.kt`) are committed.
 - minSdk floored to 24.

@@ -1,14 +1,13 @@
-import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../data/providers.dart';
 import 'router.dart';
 import 'theme.dart';
 
-/// Root widget. Wires Material 3 theming (with dynamic color when available)
-/// to the go_router shell.
+/// Root widget. Wires shadcn/ui theming to the go_router shell.
 class SniptApp extends ConsumerWidget {
   const SniptApp({super.key});
 
@@ -38,17 +37,19 @@ class SniptApp extends ConsumerWidget {
           );
     }
 
-    return DynamicColorBuilder(
-      builder: (lightDynamic, darkDynamic) {
-        return MaterialApp.router(
-          title: 'snipt',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(lightDynamic?.harmonized()),
-          darkTheme: AppTheme.dark(darkDynamic?.harmonized()),
-          themeMode: ThemeMode.system,
-          routerConfig: appRouter,
-        );
-      },
+    return ShadApp.router(
+      title: 'snipt',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
+      routerConfig: appRouter,
+      // ShadApp.router builds WidgetsApp.router (not MaterialApp), so
+      // ScaffoldMessenger is not auto-provided. Bridge it here so the existing
+      // ScaffoldMessenger.of(context) calls keep working during the incremental
+      // shadcn migration. Once all SnackBar calls are replaced with ShadSonner
+      // toasts, this wrapper can be removed.
+      builder: (context, child) => ScaffoldMessenger(child: child!),
     );
   }
 }
