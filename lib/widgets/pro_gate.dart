@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../data/billing/billing_providers.dart';
 
@@ -16,12 +17,7 @@ class ProGate extends ConsumerWidget {
     this.locked,
   });
 
-  /// The Pro feature. Built only when the user owns Pro.
   final Widget child;
-
-  /// What to render when the user does not own Pro. Defaults to a compact
-  /// "Pro" badge that opens the Settings screen. The screen-level upgrade
-  /// flow lives there; this widget never launches a purchase itself.
   final Widget? locked;
 
   @override
@@ -37,24 +33,18 @@ class _ProBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
+    final theme = ShadTheme.of(context);
+    return ShadBadge.secondary(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.workspace_premium, size: 14, color: scheme.onPrimaryContainer),
+          Icon(LucideIcons.crown, size: 14, color: theme.colorScheme.foreground),
           const SizedBox(width: 4),
           Text(
             'Pro',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w600,
-                ),
+            style: theme.textTheme.small.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

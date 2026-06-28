@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 /// A premium empty-state widget with a large icon, title, and subtitle.
-/// Uses the color scheme to stay coherent in both light and dark mode.
+/// Uses the shadcn color scheme to stay coherent in both light and dark mode.
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -18,8 +19,7 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
+    final theme = ShadTheme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -31,23 +31,25 @@ class EmptyState extends StatelessWidget {
               height: 88,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: scheme.primaryContainer.withValues(alpha: 0.7),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
               ),
-              child: Icon(icon, size: 40, color: scheme.onPrimaryContainer),
+              child: Icon(icon, size: 40, color: theme.colorScheme.primary),
             ),
             const SizedBox(height: 24),
             Text(
               title,
-              style: text.titleMedium?.copyWith(
+              style: theme.textTheme.h4.copyWith(
                 fontWeight: FontWeight.w600,
-                color: scheme.onSurface,
+                color: theme.colorScheme.foreground,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               subtitle,
-              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+              style: theme.textTheme.muted.copyWith(
+                color: theme.colorScheme.mutedForeground,
+              ),
               textAlign: TextAlign.center,
             ),
             if (action != null) ...[const SizedBox(height: 24), action!],
@@ -56,4 +58,14 @@ class EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Re-exports commonly used lucide icons so feature screens don't need a
+/// separate import line. Add icons here as screens migrate.
+class AppIcons {
+  const AppIcons._();
+
+  static const error = LucideIcons.circleAlert;
+  static const searchOff = LucideIcons.searchX;
+  static const clipboard = LucideIcons.clipboardList;
 }
