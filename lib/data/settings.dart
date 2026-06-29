@@ -14,6 +14,7 @@ class AppSettings {
     this.retentionDays = 30,
     this.captureServiceEnabled = false,
     this.isPro = false,
+    this.tutorialShown = false,
   });
 
   final bool onboarded;
@@ -24,11 +25,15 @@ class AppSettings {
   /// the UI can gate Pro features on the very first frame.
   final bool isPro;
 
+  /// Whether the post-onboarding coach-mark tour has been shown at least once.
+  final bool tutorialShown;
+
   AppSettings copyWith({
     bool? onboarded,
     int? retentionDays,
     bool? captureServiceEnabled,
     bool? isPro,
+    bool? tutorialShown,
   }) {
     return AppSettings(
       onboarded: onboarded ?? this.onboarded,
@@ -36,6 +41,7 @@ class AppSettings {
       captureServiceEnabled:
           captureServiceEnabled ?? this.captureServiceEnabled,
       isPro: isPro ?? this.isPro,
+      tutorialShown: tutorialShown ?? this.tutorialShown,
     );
   }
 }
@@ -52,6 +58,7 @@ class SettingsStore {
   static const _kRetention = 'retention_days';
   static const _kService = 'capture_service_enabled';
   static const _kPro = 'is_pro';
+  static const _kTutorial = 'tutorial_shown';
 
   Future<AppSettings> read() async {
     final all = await _storage.readAll();
@@ -60,6 +67,7 @@ class SettingsStore {
       retentionDays: int.tryParse(all[_kRetention] ?? '') ?? 30,
       captureServiceEnabled: all[_kService] == 'true',
       isPro: all[_kPro] == 'true',
+      tutorialShown: all[_kTutorial] == 'true',
     );
   }
 
@@ -68,6 +76,7 @@ class SettingsStore {
     await _storage.write(key: _kRetention, value: '${s.retentionDays}');
     await _storage.write(key: _kService, value: '${s.captureServiceEnabled}');
     await _storage.write(key: _kPro, value: '${s.isPro}');
+    await _storage.write(key: _kTutorial, value: '${s.tutorialShown}');
   }
 }
 
@@ -105,6 +114,8 @@ class SettingsController extends AsyncNotifier<AppSettings> {
   /// verified purchase or successful restore.
   Future<void> setPro(bool value) =>
       _update(_current.copyWith(isPro: value));
+  Future<void> markTutorialShown() =>
+      _update(_current.copyWith(tutorialShown: true));
 }
 
 final settingsControllerProvider =

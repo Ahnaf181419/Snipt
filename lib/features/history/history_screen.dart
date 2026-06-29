@@ -11,6 +11,7 @@ import '../../data/settings.dart';
 import '../../domain/models/capture_event.dart';
 import '../../domain/models/clip_type.dart';
 import '../../widgets/empty_state.dart';
+import '../tutorial/tutorial_overlay.dart';
 import 'widgets/clip_tile.dart';
 import 'widgets/skeleton_clip_tile.dart';
 
@@ -25,6 +26,14 @@ class HistoryScreen extends ConsumerStatefulWidget {
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   late final TextEditingController _searchController;
 
+  final _searchKey = GlobalKey();
+  final _settingsKey = GlobalKey();
+  final _bannerKey = GlobalKey();
+  final _fabKey = GlobalKey();
+  final _firstTileKey = GlobalKey();
+  bool _tutorialActive = false;
+  bool _tutorialChecked = false;
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +46,64 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _maybeStartTutorial();
+  }
+
+  void _maybeStartTutorial() {
+    if (_tutorialChecked) return;
+    _tutorialChecked = true;
+    final settings = ref.read(settingsControllerProvider).value;
+    if (settings == null || !settings.onboarded || settings.tutorialShown) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _tutorialActive = true);
+    });
+  }
+
+  void _dismissTutorial() {
+    setState(() => _tutorialActive = false);
+    ref.read(settingsControllerProvider.notifier).markTutorialShown();
+  }
+
+  List<TutorialStep> _buildSteps(bool showBannerStep) {
+    return [
+      TutorialStep(
+        targetKey: _searchKey,
+        title: 'Search your clips',
+        body: "Find any text you've copied by typing here.",
+      ),
+      TutorialStep(
+        targetKey: _settingsKey,
+        title: 'Settings',
+        body: 'Adjust retention, enable Pro features, and manage capture.',
+      ),
+      if (showBannerStep)
+        TutorialStep(
+          targetKey: _bannerKey,
+          title: 'Enable capture service',
+          body: 'Turn on the foreground service to capture clips from the '
+              'notification or Quick-Settings tile.',
+        ),
+      TutorialStep(
+        targetKey: _fabKey,
+        title: 'Capture',
+        body: 'Tap to save text from your clipboard or pick an image.',
+        placement: TooltipPlacement.above,
+      ),
+      TutorialStep(
+        targetKey: _firstTileKey,
+        title: 'Manage clips',
+        body: 'Tap to copy \u00b7 long-press to open \u00b7 swipe left to '
+            'delete \u00b7 use the menu to pin.',
+        placement: TooltipPlacement.above,
+      ),
+    ];
   }
 
   Future<void> _runRetention() async {
@@ -172,63 +239,83 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final query = ref.watch(searchQueryProvider);
     final settings = ref.watch(settingsControllerProvider).value;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('snipt'),
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.settings),
-            onPressed: () => context.push('/settings'),
-            tooltip: 'Settings',
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showCaptureSheet,
-        icon: const Icon(LucideIcons.plus),
-        label: const Text('Capture'),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: ShadInput(
-              controller: _searchController,
-              placeholder: const Text('Search clips'),
-              leading: Icon(LucideIcons.search, size: 18,
-                  color: theme.colorScheme.mutedForeground),
-              onChanged: (v) {
-                ref.read(searchQueryProvider.notifier).set(v);
-                setState(() {});
-              },
-              trailing: _searchController.text.isEmpty
-                  ? null
-                  : ShadIconButton.ghost(
-                      icon: Icon(LucideIcons.x, size: 16,
-                          color: theme.colorScheme.mutedForeground),
-                      onPressed: () {
-                        _searchController.clear();
-                        ref.read(searchQueryProvider.notifier).clear();
-                        setState(() {});
-                      },
-                    ),
-            ),
-          ),
-          if (settings != null && !settings.captureServiceEnabled)
-            _SetupBanner(onTap: () => context.push('/onboarding')),
-          Expanded(
-            child: clips.when(
-              loading: () => const SkeletonClipList(),
-              error: (e, _) => EmptyState(
-                icon: LucideIcons.circleAlert,
-                title: 'Something went wrong',
-                subtitle: '$e',
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: const Text('snipt'),
+            actions: [
+              IconButton(
+                key: _settingsKey,
+                icon: const Icon(LucideIcons.settings),
+                onPressed: () => context.push('/settings'),
+                tooltip: 'Settings',
               ),
-              data: (items) => _list(items, query),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            key: _fabKey,
+            onPressed: _showCaptureSheet,
+            icon: const Icon(LucideIcons.plus),
+            label: const Text('Capture'),
+          ),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                child: ShadInput(
+                  key: _searchKey,
+                  controller: _searchController,
+                  placeholder: const Text('Search clips'),
+                  leading: Icon(LucideIcons.search, size: 18,
+                      color: theme.colorScheme.mutedForeground),
+                  onChanged: (v) {
+                    ref.read(searchQueryProvider.notifier).set(v);
+                    setState(() {});
+                  },
+                  trailing: _searchController.text.isEmpty
+                      ? null
+                      : ShadIconButton.ghost(
+                          icon: Icon(LucideIcons.x, size: 16,
+                              color: theme.colorScheme.mutedForeground),
+                          onPressed: () {
+                            _searchController.clear();
+                            ref.read(searchQueryProvider.notifier).clear();
+                            setState(() {});
+                          },
+                        ),
+                ),
+              ),
+              if (settings != null && !settings.captureServiceEnabled)
+                _SetupBanner(
+                  key: _bannerKey,
+                  onTap: () => context.push('/onboarding'),
+                ),
+              Expanded(
+                child: clips.when(
+                  loading: () => const SkeletonClipList(),
+                  error: (e, _) => EmptyState(
+                    icon: LucideIcons.circleAlert,
+                    title: 'Something went wrong',
+                    subtitle: '$e',
+                  ),
+                  data: (items) => _list(items, query),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_tutorialActive)
+          Positioned.fill(
+            child: TutorialOverlay(
+              steps: _buildSteps(
+                settings != null && !settings.captureServiceEnabled,
+              ),
+              onComplete: _dismissTutorial,
+              onSkip: _dismissTutorial,
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -261,6 +348,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           ),
           onDismissed: (_) => _delete(clip),
           child: ClipTile(
+            key: i == 0 ? _firstTileKey : null,
             clip: clip,
             onCopy: () => _copy(clip),
             onTogglePin: () {
@@ -277,7 +365,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 }
 
 class _SetupBanner extends StatelessWidget {
-  const _SetupBanner({required this.onTap});
+  const _SetupBanner({super.key, required this.onTap});
 
   final VoidCallback onTap;
 
