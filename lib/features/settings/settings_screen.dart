@@ -92,7 +92,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final theme = ShadTheme.of(context);
     final settings =
         ref.watch(settingsControllerProvider).value ?? const AppSettings();
-    final bridge = ref.read(captureBridgeProvider);
     final isPro = ref.watch(isProProvider);
     final purchaseStatus =
         ref.watch(purchaseStatusProvider).value ?? PurchaseStatus.notOwned;
@@ -161,13 +160,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
-          ListTile(
-            leading: const Icon(LucideIcons.layers),
-            title: const Text('Floating bubble permission'),
-            subtitle: const Text('Allow drawing over other apps.'),
-            trailing: const Icon(LucideIcons.externalLink),
-            onTap: () => bridge.host.requestOverlayPermission(),
-          ),
+          // The floating-bubble UI is not built yet — the SYSTEM_ALERT_WINDOW
+          // permission and Pigeon overlay methods stay wired in case it gets
+          // built later, but the settings entry that asked for it was removed
+          // to stop promising users a feature that doesn't exist.
           _SectionHeader('Storage', theme: theme),
           ListTile(
             title: const Text('Keep history for'),
@@ -204,6 +200,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             isThreeLine: true,
           ),
+          // Dev shortcut: long-press the app name in the title row to
+          // toggle Pro locally without going through Play Store. Useful for
+          // QA and for testing the Pro-only paths without a real purchase.
+          GestureDetector(
+            onLongPress: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final next = !isPro;
+              await ref.read(settingsControllerProvider.notifier).setPro(next);
+              if (context.mounted) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(next
+                        ? 'Pro enabled (local only — Play Store ignored)'
+                        : 'Pro disabled'),
+                  ),
+                );
+              }
+            },
+            child: ListTile(
+              leading: Icon(
+                isPro ? LucideIcons.crown : LucideIcons.crown,
+                color: isPro ? Colors.amber : theme.colorScheme.mutedForeground,
+              ),
+              title: const Text('Pro mode (dev)'),
+              subtitle: Text(
+                isPro
+                    ? 'Active. Long-press to disable. Play Store restore will not clobber this.'
+                    : 'Long-press to enable locally. Play Store restore will not clobber this.',
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -218,7 +245,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       case PurchaseStatus.owned:
         return 'You already own Pro. Tap Restore purchases above.';
       case PurchaseStatus.notOwned:
-        return 'Unlock unlimited clips, export, and more.';
+        return 'Unlock unlimited clips and support local-first.';
     }
   }
 }
@@ -244,10 +271,9 @@ class _ProBenefitsTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text('• Unlimited clip history (free tier: 200)',
               style: theme.textTheme.muted),
-          Text('• Export & import your clips', style: theme.textTheme.muted),
-          Text('• Auto-clear timer for the system clipboard',
+          Text('• No cap on stored image bytes',
               style: theme.textTheme.muted),
-          Text('• Home-screen quick-capture widget',
+          Text('• Priority feature requests',
               style: theme.textTheme.muted),
         ],
       ),

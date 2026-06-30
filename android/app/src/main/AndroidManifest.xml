@@ -5,8 +5,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Persistent capture notification (Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Floating bubble that lets the user pull the current clip into focus. -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- API 33+ scoped media read for gallery access. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Pre-Q legacy storage write for save-to-gallery on API <= 28. -->

@@ -30,7 +30,6 @@ const _$CaptureSourceEnumMap = {
   CaptureSource.share: 'share',
   CaptureSource.processText: 'processText',
   CaptureSource.tile: 'tile',
-  CaptureSource.bubble: 'bubble',
   CaptureSource.manual: 'manual',
   CaptureSource.unknown: 'unknown',
 };

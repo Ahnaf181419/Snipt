@@ -32,22 +32,26 @@ final billingBootstrapProvider = Provider<void>((ref) {
   // 1. Restore on startup so a fresh install on a device that already owns
   //    Pro gets the entitlement without a tap. Failure here is non-fatal —
   //    the user can always tap "Restore purchases" in Settings.
+  //
+  //    The restore is observation-only: we do NOT let it write the local
+  //    isPro flag down to false. The flag can only be cleared by an explicit
+  //    user action (manual restore button in settings, or uninstall). This
+  //    protects users who flipped on a dev/QA flag, or who are testing Pro
+  //    locally without a Play Store connection, from having their flag
+  //    silently clobbered.
   unawaited(service.restore().catchError((Object e) {
     debugPrint('[Billing] startup restore failed: $e');
   }));
 
-  // 2. Listen to status changes and mirror ownership into the settings
-  //    store. We do this on the settings controller (not directly on
-  //    isProProvider) so a restart re-reads the persisted flag before the
-  //    first restore resolves, and the UI is gated on the first frame.
+  // 2. Listen to status changes and ONLY mirror "owned" into the settings
+  //    store. We do NOT mirror "notOwned" or "error" — those would silently
+  //    revoke Pro. The user has to tap "Restore purchases" or uninstall to
+  //    lose the flag.
   final sub = service.statusStream.listen((status) {
     if (status == PurchaseStatus.owned) {
       unawaited(controller.setPro(true));
-    } else if (status == PurchaseStatus.notOwned) {
-      // Only flip back to false on an explicit notOwned. We don't trust
-      // error/pending as "Pro is gone" — that would be a security regression.
-      unawaited(controller.setPro(false));
     }
+    // intentionally no `else if (notOwned) setPro(false)` — see comment above.
   });
 
   ref.onDispose(sub.cancel);

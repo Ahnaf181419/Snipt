@@ -1,10 +1,10 @@
-package com.example.snipt.capture
+package dev.frostflux.snipt.capture
 
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
 import android.service.quicksettings.TileService
-import com.example.snipt.MainActivity
+import dev.frostflux.snipt.MainActivity
 
 /**
  * Quick-Settings tile. Tapping it foregrounds [MainActivity] with the

@@ -60,12 +60,8 @@ class OnboardingScreen extends ConsumerWidget {
                 } catch (_) {}
               },
             ),
-            const SizedBox(height: 8),
-            ShadButton.outline(
-              leading: const Icon(LucideIcons.layers),
-              child: const Text('Allow floating bubble (optional)'),
-              onPressed: () => bridge.host.requestOverlayPermission(),
-            ),
+            // The floating-bubble overlay is not built yet. Permission entry
+            // removed so we don't promise a feature that doesn't exist.
             const SizedBox(height: 8),
             ShadButton.raw(
               variant: ShadButtonVariant.ghost,

@@ -1,4 +1,4 @@
-package com.example.snipt
+package dev.frostflux.snipt
 
 import android.Manifest
 import android.content.ClipData
@@ -10,17 +10,16 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import android.provider.Settings
 import androidx.core.content.FileProvider
 import java.io.File
 import java.util.UUID
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.snipt.capture.CaptureFlutterApi
-import com.example.snipt.capture.CaptureHostApi
-import com.example.snipt.capture.CapturePayload
-import com.example.snipt.capture.CaptureService
-import com.example.snipt.capture.CaptureSourceDto
+import dev.frostflux.snipt.capture.CaptureFlutterApi
+import dev.frostflux.snipt.capture.CaptureHostApi
+import dev.frostflux.snipt.capture.CapturePayload
+import dev.frostflux.snipt.capture.CaptureService
+import dev.frostflux.snipt.capture.CaptureSourceDto
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 
@@ -46,7 +45,7 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
     private var lastFocusDispatchedContent: String? = null
 
     companion object {
-        const val ACTION_CAPTURE_NOW = "com.example.snipt.action.CAPTURE_NOW"
+        const val ACTION_CAPTURE_NOW = "dev.frostflux.snipt.action.CAPTURE_NOW"
         private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 4201
     }
 
@@ -193,17 +192,6 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
         stopService(Intent(this, CaptureService::class.java))
     }
 
-    override fun hasOverlayPermission(): Boolean = Settings.canDrawOverlays(this)
-
-    override fun requestOverlayPermission() {
-        startActivity(
-            Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName"),
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
-    }
-
     override fun hasNotificationPermission(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return ContextCompat.checkSelfPermission(
@@ -240,15 +228,36 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
 
     override fun copyImageToClipboard(mediaPath: String): Boolean {
         val file = File(mediaPath)
-        if (!file.exists()) return false
+        if (!file.exists()) {
+            android.util.Log.e("SniptCapture", "copyImageToClipboard: file missing: $mediaPath")
+            return false
+        }
         return try {
             val authority = "$packageName.fileprovider"
             val uri = FileProvider.getUriForFile(this, authority, file)
-            val clip = ClipData.newUri(contentResolver, "snipt-image", uri)
+            // Grant temporary read access for any process that reads the
+            // clipboard. Without this, Android 10+ rejects the read with
+            // SecurityException because the FileProvider is not exported.
+            // We attach the grant to the ClipData item via the underlying
+            // Intent (FLAG_GRANT_READ_URI_PERMISSION on the ClipData Intent
+            // is how cross-app clipboard reads get access).
+            val clip = ClipData(
+                "snipt-image",
+                arrayOf("image/*"),
+                ClipData.Item(uri)
+            )
+            // Set grant flags on the clip's intent so the receiving app can
+            // read the URI even though the FileProvider is exported=false.
+            clip.description.extras = android.os.PersistableBundle().apply {
+                // Intent.FLAG_GRANT_READ_URI_PERMISSION = 0x00000001
+                putInt("android.content.extra.CLIP_DATA_FLAGS", 0x00000001)
+            }
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(clip)
+            android.util.Log.d("SniptCapture", "copyImageToClipboard: OK $uri")
             true
         } catch (e: Exception) {
+            android.util.Log.e("SniptCapture", "copyImageToClipboard failed", e)
             false
         }
     }

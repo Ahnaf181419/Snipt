@@ -4,7 +4,7 @@ part 'capture_event.freezed.dart';
 part 'capture_event.g.dart';
 
 /// Where a capture originated, for analytics-free UX hints only.
-enum CaptureSource { share, processText, tile, bubble, manual, unknown }
+enum CaptureSource { share, processText, tile, manual, unknown }
 
 /// A raw clipboard payload handed to Dart by the native capture engine
 /// (or produced in-app). The repository is responsible for hashing,

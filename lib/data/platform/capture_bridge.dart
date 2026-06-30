@@ -73,7 +73,6 @@ class CaptureBridge extends CaptureFlutterApi {
         CaptureSourceDto.share => CaptureSource.share,
         CaptureSourceDto.processText => CaptureSource.processText,
         CaptureSourceDto.tile => CaptureSource.tile,
-        CaptureSourceDto.bubble => CaptureSource.bubble,
         CaptureSourceDto.manual => CaptureSource.manual,
         CaptureSourceDto.unknown => CaptureSource.unknown,
       };

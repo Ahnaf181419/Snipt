@@ -353,7 +353,7 @@ class Clip extends DataClass implements Insertable<Clip> {
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
-  /// Path to the media file (relative to filesDir) for image clips. Null for
+  /// Absolute path to the media file for image clips. Null for
   /// text/url/richText clips.
   final String? mediaPath;
 

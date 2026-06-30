@@ -1,4 +1,4 @@
-package com.example.snipt.capture
+package dev.frostflux.snipt.capture
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,7 +9,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import com.example.snipt.MainActivity
+import dev.frostflux.snipt.MainActivity
 
 /**
  * Lane-B capture engine: a long-lived foreground service whose persistent

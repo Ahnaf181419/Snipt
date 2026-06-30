@@ -113,7 +113,6 @@ enum CaptureSourceDto {
   share,
   processText,
   tile,
-  bubble,
   manual,
   unknown,
 }
@@ -286,43 +285,6 @@ class CaptureHostApi {
 
   Future<void> stopService() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.snipt.CaptureHostApi.stopService$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-
-    _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
-  }
-
-  Future<bool> hasOverlayPermission() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.snipt.CaptureHostApi.hasOverlayPermission$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-
-    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
-    return pigeonVar_replyValue! as bool;
-  }
-
-  Future<void> requestOverlayPermission() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.snipt.CaptureHostApi.requestOverlayPermission$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
