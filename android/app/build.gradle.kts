@@ -18,7 +18,7 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.example.snipt"
+    namespace = "dev.frostflux.snipt"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -28,10 +28,10 @@ android {
     }
 
     defaultConfig {
-        // Play Store application ID. The internal namespace stays
-        // com.example.snipt for source/package alignment; only the
-        // applicationId matters for store listing and device installs.
-        applicationId = "com.snipt.app"
+        // Play Store application ID. The namespace and applicationId match
+        // so the source tree, Manifest class references, and Play Store
+        // listing all use the same identifier.
+        applicationId = "dev.frostflux.snipt"
         // local_auth, flutter_secure_storage, foreground-service types and the
         // bubble/overlay APIs need a modern floor; pin instead of inheriting.
         minSdk = maxOf(24, flutter.minSdkVersion)

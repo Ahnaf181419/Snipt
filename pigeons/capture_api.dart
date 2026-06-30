@@ -4,15 +4,15 @@ import 'package:pigeon/pigeon.dart';
   PigeonOptions(
     dartOut: 'lib/data/platform/capture_api.g.dart',
     kotlinOut:
-        'android/app/src/main/kotlin/com/example/snipt/capture/CaptureApi.g.kt',
-    kotlinOptions: KotlinOptions(package: 'com.example.snipt.capture'),
+        'android/app/src/main/kotlin/dev/frostflux/snipt/capture/CaptureApi.g.kt',
+    kotlinOptions: KotlinOptions(package: 'dev.frostflux.snipt.capture'),
     dartPackageName: 'snipt',
   ),
 )
 
 /// Mirrors Dart's CaptureSource; kept separate so the generated channel code
 /// has no dependency on the domain layer.
-enum CaptureSourceDto { share, processText, tile, bubble, manual, unknown }
+enum CaptureSourceDto { share, processText, tile, manual, unknown }
 
 class CapturePayload {
   CapturePayload(
@@ -41,8 +41,6 @@ abstract class CaptureHostApi {
   bool isServiceRunning();
   void startService();
   void stopService();
-  bool hasOverlayPermission();
-  void requestOverlayPermission();
 
   /// Android 13+ (API 33+) requires runtime POST_NOTIFICATIONS permission for
   /// the foreground-service notification to be visible. Returns true on older

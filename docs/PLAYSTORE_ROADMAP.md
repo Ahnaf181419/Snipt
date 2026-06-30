@@ -19,8 +19,9 @@
 - Service auto-launches once permission is granted
 
 ### 1c. Application ID [DONE]
-- Changed from com.example.snipt to com.snipt.app
-- NOTE: You may want to customize this further for your brand
+- Set to `dev.frostflux.snipt` (namespace + applicationId aligned)
+- iOS bundle ID also aligned to `dev.frostflux.snipt` for cross-platform consistency
+- macOS + Linux bundle IDs aligned to match
 
 ### 1d. Release signing config [DONE]
 - Template added to build.gradle.kts

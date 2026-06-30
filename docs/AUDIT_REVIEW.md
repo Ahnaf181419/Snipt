@@ -230,7 +230,7 @@ Each section is rated on a scale of 1–10:
 - `core-ktx` dependency explicitly pinned.
 - AndroidManifest is thorough: all intent-filters, service declarations, tile service, `<queries>`.
 - `specialUse` FGS has required property for Play Console compliance.
-- **NEW: `applicationId` changed** from `com.example.snipt` to `com.snipt.app`.
+- **`applicationId` is `dev.frostflux.snipt`** (namespace + applicationId aligned; iOS/macOS/Linux bundle IDs aligned too).
 - **NEW: Release signing config** added — reads from `key.properties` (gitignored), falls back to debug signing when absent.
 
 **Weaknesses:**
