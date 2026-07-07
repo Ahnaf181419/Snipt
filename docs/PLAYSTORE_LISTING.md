@@ -346,7 +346,45 @@ or by disabling in Settings.
 
 ---
 
-## Build artifacts to upload
+## Privacy policy
+
+The full policy lives at `docs/PRIVACY_POLICY.md` in this repo.
+
+### Hosting requirement
+
+Play Console requires a **public URL** for the privacy policy. The
+easiest hosting options for a one-time policy:
+
+| Option | URL format | Cost |
+|---|---|---|
+| **GitHub Pages from this repo** | `https://<owner>.github.io/snipt/privacy` | Free |
+| **GitLab Pages** | `https://<owner>.gitlab.io/snipt/privacy` | Free |
+| **Notion public page** | `https://<handle>.notion.site/<id>` | Free |
+| **Custom domain** | `https://frostflux.dev/privacy` | Domain cost only |
+
+### Quickest path: GitHub Pages (4 commands)
+
+```bash
+# 1. Create a gh-pages branch with just the policy
+git checkout -b gh-pages
+# 2. Copy the policy into a path that Pages will serve
+mkdir -p docs && cp docs/PRIVACY_POLICY.md docs/privacy.md
+git add docs/privacy.md
+git commit -m "docs: publish privacy policy"
+git push -u origin gh-pages
+# 3. In repo Settings → Pages, set source = gh-pages branch, root = /
+# 4. Privacy policy URL becomes:
+#    https://<owner>.github.io/snipt/privacy
+```
+
+### Paste this URL into Play Console
+
+Under **Policy → App content → Privacy policy**, paste the hosted URL.
+Copy the same URL into **Data Safety → Data deletion URL** if you set
+data deletion to "Yes" (recommended for this app, even though
+uninstall handles deletion entirely).
+
+Replace `<owner>` with your actual GitHub username before publishing.
 
 | File | Source | Notes |
 |---|---|---|
