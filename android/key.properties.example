@@ -1,0 +1,21 @@
+# Template for release-signing credentials.
+#
+# 1. Generate a keystore (run ONCE, on a clean machine, BEFORE
+#    publishing to Play Console):
+#
+#      keytool -genkey -v -keystore snipt-release.jks \
+#        -keyalg RSA -keysize 2048 -validity 25000 \
+#        -alias snipt -storepass YOUR_STORE_PASSWORD \
+#        -keypass YOUR_KEY_PASSWORD \
+#        -dname "CN=snipt, O=FrostFlux, C=US"
+#
+# 2. Copy this file to key.properties and fill in the values.
+# 3. key.properties is gitignored — never commit it. The
+#    committed keystore + passwords were leaked previously, so
+#    THIS file must replace them with a fresh keystore.
+#
+# storeFile is relative to the android/ directory.
+storeFile=../snipt-release.jks
+storePassword=
+keyAlias=snipt
+keyPassword=
