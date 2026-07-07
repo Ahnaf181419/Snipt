@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -201,9 +202,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             isThreeLine: true,
           ),
           // Dev shortcut: long-press the app name in the title row to
-          // toggle Pro locally without going through Play Store. Useful for
-          // QA and for testing the Pro-only paths without a real purchase.
-          GestureDetector(
+          // toggle Pro locally without going through Play Store. Only
+          // available in debug builds — release builds must use the real
+          // Google Play purchase / restore path so QA shortcuts don't
+          // leak into Play Store reviews.
+          if (kDebugMode)
+            GestureDetector(
             onLongPress: () async {
               final messenger = ScaffoldMessenger.of(context);
               final next = !isPro;
