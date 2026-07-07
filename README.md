@@ -10,7 +10,6 @@ Capture text you copy, search through it, pin what matters, and reuse it later. 
 - **Encrypted storage** - All clips are stored in a SQLCipher-encrypted database. The key lives in the Android Keystore. No cloud, no sync, no tracking.
 - **Quick capture** - Tap the Capture button, use the Quick Settings tile, or share text from any app.
 - **Full-text search** - Find any clip instantly with FTS5-powered search.
-- **App lock** - Optional biometric/PIN lock that re-arms when you leave the app.
 - **Auto-cleanup** - Configurable retention period (default 30 days) to keep your history tidy.
 - **Premium UX** - Material 3 with dynamic color, skeleton loading, haptic feedback, and smooth animations.
 - **Battery efficient** - No background polling. Capture happens on your terms.
