@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy Policy — snipt</title>
+<meta name="description" content="Privacy policy for snipt, a local-first Android clipboard manager.">
+<style>
+  :root {
+    --fg: #18181b;
+    --muted: #71717a;
+    --bg: #fafafa;
+    --card: #ffffff;
+    --border: #e4e4e7;
+    --link: #2563eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #fafafa;
+      --muted: #a1a1aa;
+      --bg: #0a0a0a;
+      --card: #18181b;
+      --border: #27272a;
+      --link: #60a5fa;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+  h1, h2, h3 { line-height: 1.25; }
+  h1 { font-size: 1.9rem; margin: 0 0 0.5rem; }
+  h2 { font-size: 1.4rem; margin: 2.5rem 0 0.6rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+  h3 { font-size: 1.1rem; margin: 1.6rem 0 0.4rem; }
+  p { margin: 0.6rem 0; }
+  .meta { color: var(--muted); font-size: 0.92rem; margin-bottom: 2rem; }
+  ul { padding-left: 1.4rem; }
+  li { margin: 0.2rem 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.95rem; }
+  th, td { border: 1px solid var(--border); padding: 0.5rem 0.7rem; vertical-align: top; text-align: left; }
+  th { background: var(--card); font-weight: 600; }
+  code { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 0.05rem 0.3rem; font-size: 0.92em; }
+  pre { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; }
+  pre code { background: none; border: none; padding: 0; }
+  a { color: var(--link); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  footer { color: var(--muted); font-size: 0.85rem; margin-top: 3rem; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+<h1>Privacy Policy — snipt</h1>
+<p><strong>Last updated:</strong> 2026-07-07 <strong>Effective date:</strong> 2026-07-07</p>
+<p>snipt ("we," "the app," "this app") is an Android clipboard manager developed by FrostFlux. This policy explains exactly what data snipt handles and why. It is written in plain English so you do not need a lawyer to read it.</p>
+<p><strong>The summary, if you read nothing else:</strong> snipt stores your clips on your device only. snipt has no servers. snipt does not transmit anything. No analytics. No crash reporter. No tracking. No accounts.</p>
+<hr>
+<h2>1. Data we do NOT collect</h2>
+<ul>
+<li>We do not collect any data off your device.</li>
+<li>We do not run any analytics, telemetry, or crash reporting.</li>
+<li>We do not have a backend server. There is nothing for data to be</li>
+</ul>
+<p>transmitted to.</p>
+<ul>
+<li>We do not require an account, sign-in, email, or phone number.</li>
+<li>We do not track you across other apps or websites.</li>
+<li>We do not serve ads. There are no ad networks integrated.</li>
+</ul>
+<h2>2. Data stored on your device</h2>
+<p>The following categories of data are written to the device, encrypted with SQLCipher (AES-256), and never leave the device. They are only accessible to the snipt process while the app is running.</p>
+<h3>2.1 Clip content</h3>
+<ul>
+<li><strong>What:</strong> the text and images you explicitly capture into snipt via</li>
+</ul>
+<p>the Capture button, the Quick-Settings tile, the share sheet, the text-selection "Process text" menu, or the gallery picker.</p>
+<ul>
+<li><strong>Why:</strong> to provide clipboard history, search, and pin features.</li>
+<li><strong>How long:</strong> until you delete the clip, until auto-cleanup (you</li>
+</ul>
+<p>choose 7 / 30 / 90 days / forever in Settings), or until you uninstall the app. Pinned clips are exempt from auto-cleanup.</p>
+<h3>2.2 Metadata about each clip</h3>
+<ul>
+<li><strong>What:</strong> timestamp, type (text/image), pin status, usage counter,</li>
+</ul>
+<p>last-updated time, content hash (for deduplication), soft-delete tombstone flag.</p>
+<ul>
+<li><strong>Why:</strong> to display history ordering, dedup duplicates, and survive</li>
+</ul>
+<p>restarts.</p>
+<ul>
+<li><strong>How long:</strong> same lifetime as the clip itself.</li>
+</ul>
+<h3>2.3 Image byte storage</h3>
+<ul>
+<li><strong>What:</strong> the binary image bytes you shared or selected, copied into</li>
+</ul>
+<p>the app's private internal storage (<code>filesDir/media/</code>).</p>
+<ul>
+<li><strong>Why:</strong> so you can preview, copy back, save to gallery, and share</li>
+</ul>
+<p>images without needing the original source.</p>
+<ul>
+<li><strong>How long:</strong> same lifetime as the image clip itself.</li>
+</ul>
+<h3>2.4 Database encryption key</h3>
+<ul>
+<li><strong>What:</strong> a 32-byte AES key generated by <code>Random.secure()</code> on first</li>
+</ul>
+<p>launch. Stored in the Android Keystore via <code>flutter_secure_storage</code> (EncryptedSharedPreferences).</p>
+<ul>
+<li><strong>Why:</strong> required for SQLCipher to encrypt your database.</li>
+<li><strong>Accessibility:</strong> only the snipt process can read this key. It is</li>
+</ul>
+<p>not exported.</p>
+<h3>2.5 App preferences</h3>
+<ul>
+<li><strong>What:</strong> onboarding completion flag, retention period in days,</li>
+</ul>
+<p>capture service on/off flag, Pro purchase status flag, tutorial shown flag.</p>
+<ul>
+<li><strong>Where:</strong> EncryptedSharedPreferences via <code>flutter_secure_storage</code>.</li>
+<li><strong>Why:</strong> so snipt remembers your choices between launches.</li>
+</ul>
+<h2>3. Permissions we request and why</h2>
+<p>Android requires apps to declare permissions in the manifest. Each one snipt requests exists for a specific feature.</p>
+<table>
+<thead><tr>
+<th>Permission</th>
+<th>Why we need it</th>
+</tr></thead><tbody>
+<tr>
+<td><code>FOREGROUND_SERVICE_SPECIAL_USE</code></td>
+<td>Run the persistent capture service so the notification + Quick-Settings tile can trigger captures without re-launching the app.</td>
+</tr>
+<tr>
+<td><code>POST_NOTIFICATIONS</code> (Android 13+)</td>
+<td>Show the persistent capture notification and the capture-result toast. Without it, Android silently blocks notifications.</td>
+</tr>
+<tr>
+<td><code>READ_MEDIA_IMAGES</code> (Android 13+)</td>
+<td>When you tap "Pick image" or share an image to snipt, we copy it into the app's private storage.</td>
+</tr>
+<tr>
+<td><code>WRITE_EXTERNAL_STORAGE</code> (Android &lt;= 9 only)</td>
+<td>Save captured images to your gallery on older Android versions. Not requested on Android 10+.</td>
+</tr>
+<tr>
+<td><code>com.android.vending.BILLING</code></td>
+<td>Process the optional one-time Snipt Pro in-app purchase via Google Play Billing. Payment is handled by Google; we never see your card.</td>
+</tr>
+</tbody></table>
+<p>We do <strong>not</strong> request: <code>INTERNET</code>, <code>ACCESS_NETWORK_STATE</code>, location, contacts, microphone, camera, SMS, call log, accounts, or any background clipboard permission. The Android 10+ background-clipboard restriction is respected by design — captures are user-initiated only (Capture button, Quick-Settings tile, share sheet, "Process text" menu, or app regaining window focus).</p>
+<h2>4. The capture service and the persistent notification</h2>
+<p>If you enable the optional capture service, Android requires us to show a persistent notification that tells you the service is running. We use this notification for one purpose: a "Capture" action that opens snipt and reads the current clipboard (with your one tap as consent).</p>
+<p>You can stop the service at any time by:</p>
+<ul>
+<li>Tapping the "Stop" action on the notification.</li>
+<li>Toggling the switch off in Settings → Capture.</li>
+<li>Uninstalling the app.</li>
+</ul>
+<h2>5. Third-party services</h2>
+<ul>
+<li><strong>Google Play Billing</strong> — processes the optional Snipt Pro purchase.</li>
+</ul>
+<p>Google's Privacy Policy applies to that step; we receive a purchase token and an <code>isPro</code> flag, never your card details. Google's policy: https://policies.google.com/privacy</p>
+<p>That is the only third party involved. There is no analytics provider, no crash reporter, no push notification service, no font CDN, no remote config service.</p>
+<h2>6. Children's privacy</h2>
+<p>snipt does not target children under 13. We do not knowingly collect any data from children. (See also: we do not collect any data from anyone, child or otherwise.)</p>
+<h2>7. Data deletion</h2>
+<p>Because all data lives on your device, deletion is straightforward and immediate:</p>
+<ul>
+<li><strong>Delete one clip:</strong> swipe it away in the history list, or long-press</li>
+</ul>
+<p>and choose Delete.</p>
+<ul>
+<li><strong>Delete all clips:</strong> Settings → Storage → Clear history (when</li>
+</ul>
+<p>available).</p>
+<ul>
+<li><strong>Delete everything:</strong> uninstall the app. Android removes the</li>
+</ul>
+<p>SQLCipher database file, the image bytes in <code>filesDir/media/</code>, the secure-storage key, and all preferences. The keystore entry in the Android KeyStore is also cleared.</p>
+<p>If you reinstall the app after uninstalling, no data is restored — it was deleted with the previous install. Pro purchase status is restored via Google Play's purchase-restore flow (see §5).</p>
+<h2>8. Your rights</h2>
+<p>Depending on your jurisdiction (GDPR, CCPA, etc.) you may have rights to access, correct, or delete personal data. Since snipt stores nothing outside your device, all three of these reduce to: open the app, view your clips, edit or delete them as you wish. The uninstall-as-full-deletion path described in §7 is the strongest form of "right to be forgotten" the on-device architecture can offer.</p>
+<h2>9. Security</h2>
+<ul>
+<li><strong>At-rest encryption:</strong> SQLCipher (AES-256) on the database,</li>
+</ul>
+<p>EncryptedSharedPreferences for settings.</p>
+<ul>
+<li><strong>No network surface:</strong> the app does not declare <code>INTERNET</code> and</li>
+</ul>
+<p>cannot open outbound sockets under any normal code path.</p>
+<ul>
+<li><strong><code>allowBackup="false"</code></strong> is set in the manifest so Google Auto</li>
+</ul>
+<p>Backup and <code>adb backup</code> cannot extract the database.</p>
+<ul>
+<li><strong>No remote logging:</strong> errors are caught by <code>runZonedGuarded</code> and</li>
+</ul>
+<p>printed to <code>logcat</code> only in debug builds. In release builds the error is swallowed silently — your data never leaves the device.</p>
+<ul>
+<li><strong>No third-party SDKs that phone home.</strong> See §5.</li>
+</ul>
+<h2>10. Changes to this policy</h2>
+<p>If we change anything material (a new data category, a new permission, a new third party), we will: 1. Update the "Last updated" date above. 2. Surface a change notice inside the app on next launch (the settings store already tracks "last shown version" for similar onboarding flows). 3. Wait at least 30 days before any change takes effect, unless the change is strictly reducing data collection.</p>
+<h2>11. Contact</h2>
+<p>Questions, concerns, or a request to be sure we are honoring this policy in your specific situation:</p>
+<ul>
+<li><strong>Email:</strong> support@frostflux.dev *(replace with the real address</li>
+</ul>
+<p>before publishing)*</p>
+<ul>
+<li><strong>Project page:</strong> the Play Store listing URL once published</li>
+<li><strong>Source code:</strong> the project's public repository <em>(if applicable)</em></li>
+</ul>
+<p>We respond to privacy inquiries within 7 days.</p>
+<hr>
+<h2>Appendix A — On-device data inventory (for review)</h2>
+<table>
+<thead><tr>
+<th>Path</th>
+<th>Content</th>
+<th>Lifecycle</th>
+</tr></thead><tbody>
+<tr>
+<td><code>filesDir/snipt.db</code></td>
+<td>SQLCipher-encrypted clips + metadata</td>
+<td>Deleted on uninstall</td>
+</tr>
+<tr>
+<td><code>filesDir/media/&lt;uuid&gt;.&lt;ext&gt;</code></td>
+<td>Image bytes you shared</td>
+<td>Deleted when image clip is deleted or app uninstalled</td>
+</tr>
+<tr>
+<td>EncryptedSharedPreferences <code>flutter.secureStorage</code></td>
+<td>DB key, Pro flag, settings flags</td>
+<td>Deleted on uninstall; keystore entry cleared</td>
+</tr>
+<tr>
+<td>Android Keystore alias <code>snipt_db_key</code> (if used)</td>
+<td>Wrapped DB key material</td>
+<td>Deleted on uninstall</td>
+</tr>
+</tbody></table>
+<p>No external endpoints, no telemetry sinks, no remote configuration sources.</p>
+<hr>
+<p><em>This document is licensed CC-BY-4.0. You may copy, modify, or republish it verbatim for your own project.</em></p>
+<footer>
+  <a href="index.html">Home</a> &middot;
+  snipt by FrostFlux &middot;
+  <a href="https://github.com/Ahnaf181419/Snipt">source</a>
+</footer>
+</main>
+</body>
+</html>

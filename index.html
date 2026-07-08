@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>snipt — local-first clipboard manager</title>
+<meta name="description" content="snipt is a privacy-focused clipboard history app for Android. All data stays on your device.">
+<style>
+  :root {
+    --fg: #18181b;
+    --muted: #71717a;
+    --bg: #fafafa;
+    --card: #ffffff;
+    --border: #e4e4e7;
+    --link: #2563eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #fafafa;
+      --muted: #a1a1aa;
+      --bg: #0a0a0a;
+      --card: #18181b;
+      --border: #27272a;
+      --link: #60a5fa;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 80px 24px;
+    text-align: center;
+  }
+  .logo {
+    font-size: 2.6rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.5rem;
+  }
+  .tag {
+    color: var(--muted);
+    margin: 0 0 2.5rem;
+  }
+  .cta {
+    display: inline-block;
+    background: var(--fg);
+    color: var(--bg);
+    padding: 0.7rem 1.4rem;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 3rem 0 1rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  ul li { margin: 0.4rem 0; }
+  a { color: var(--link); }
+</style>
+</head>
+<body>
+<main>
+  <h1 class="logo">snipt</h1>
+  <p class="tag">Local-first clipboard manager for Android.</p>
+  <a class="cta" href="privacy.html">Read the privacy policy</a>
+  <ul>
+    <li><a href="https://github.com/Ahnaf181419/Snipt">Source on GitHub</a></li>
+  </ul>
+</main>
+</body>
+</html>
