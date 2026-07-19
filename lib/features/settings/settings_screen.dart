@@ -17,9 +17,9 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const _retentionOptions = {
-    7: '7 days',
-    30: '30 days',
-    90: '90 days',
+    7: '7 days untouched',
+    30: '30 days untouched',
+    90: '90 days untouched',
     0: 'Forever',
   };
 
@@ -167,8 +167,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // to stop promising users a feature that doesn't exist.
           _SectionHeader('Storage', theme: theme),
           ListTile(
-            title: const Text('Keep history for'),
-            subtitle: const Text('Pinned clips are never auto-deleted.'),
+            title: const Text('Forget untouched clips after'),
+            subtitle: const Text(
+                'Pinned clips are never auto-deleted. Clips you copy again '
+                'reset their timer.'),
             trailing: ShadSelect<int>(
               options: [
                 for (final e in _retentionOptions.entries)
