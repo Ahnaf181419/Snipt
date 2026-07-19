@@ -224,7 +224,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
             child: ListTile(
               leading: Icon(
-                isPro ? LucideIcons.crown : LucideIcons.crown,
+                LucideIcons.crown,
                 color: isPro ? Colors.amber : theme.colorScheme.mutedForeground,
               ),
               title: const Text('Pro mode (dev)'),
