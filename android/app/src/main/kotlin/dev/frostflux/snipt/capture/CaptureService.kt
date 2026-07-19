@@ -28,12 +28,50 @@ class CaptureService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         isRunning = true
         startForegroundNotification()
-        return START_STICKY
+        // Don't auto-restart after the system kills us (e.g. low-memory).
+        // The persistent notification disappearing is a clear signal to
+        // the user that capture is off; they can re-enable from Settings.
+        // onTaskRemoved and onTimeout both call stopSelf, which also
+        // avoids silent restarts on user-dismissed and timeout paths.
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
         isRunning = false
         super.onDestroy()
+    }
+
+    /**
+     * Android 14+ (UPSIDE_DOWN_CAKE) imposes a hard timeout on every FGS
+     * type that doesn't carry user-visible UI — including `specialUse`.
+     * When the timeout fires the system invokes this callback before
+     * killing the service. We have ~5 seconds to release foreground
+     * state cleanly. Default behavior (returning START_STICKY_COMPATIBILITY)
+     * would restart the service in the background, which Play Console
+     * would reject for the specialUse subtype. Return START_NOT_STICKY
+     * so the OS doesn't silently recreate us after a timeout — the
+     * persistent notification disappears and the user knows capture is
+     * off until they re-enable it from Settings. The user-initiated
+     * "Capture clip" path still works through MainActivity.
+     */
+    override fun onTimeout(startId: Int, foregroundServiceType: Int) {
+        super.onTimeout(startId, foregroundServiceType)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    /**
+     * The user swiped the task away from recents. By default START_STICKY
+     * would silently restart the service, which is bad UX (the user
+     * explicitly dismissed the notification). Stop self and clear the
+     * running flag so the settings screen and any UI bound to
+     * CaptureService.isRunning see the correct state.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        isRunning = false
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
     }
 
     private fun startForegroundNotification() {
