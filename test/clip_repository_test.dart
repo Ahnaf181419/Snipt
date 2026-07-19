@@ -162,4 +162,75 @@ void main() {
     expect(search, hasLength(1));
     expect(search.single.content, contains('text clip'));
   });
+
+  // ─── Media-byte cap tests ────────────────────────────────────────
+  //
+  // The 200 MB cap from AppConstants.freeTierMediaBytes is exposed as
+  // a field on ClipRepository so tests can drive it without stuffing
+  // hundreds of MB into an in-memory DB. These tests verify the cap
+  // prunes oldest-first and that pinned clips survive a prune.
+
+  test('media-byte cap: fits under budget, nothing pruned', () async {
+    repo.mediaByteBudget = 1024; // 1 KB
+    repo.isProSupplier = () => false;
+    final pathA = await makeImageFile(400);
+    final pathB = await makeImageFile(400);
+    await repo.captureImage(mediaPath: pathA, mimeType: 'image/jpeg');
+    await repo.captureImage(mediaPath: pathB, mimeType: 'image/jpeg');
+
+    final history = await repo.watchHistory().first;
+    expect(history, hasLength(2));
+  });
+
+  test('media-byte cap: oldest non-pinned pruned first', () async {
+    repo.mediaByteBudget = 1000;
+    repo.isProSupplier = () => false;
+    final oldPath = await makeImageFile(400);
+    final oldClip = await repo.captureImage(
+      mediaPath: oldPath,
+      mimeType: 'image/jpeg',
+    );
+    // Capture something newer; the older one is the prune victim.
+    final newPath = await makeImageFile(400);
+    await repo.captureImage(mediaPath: newPath, mimeType: 'image/jpeg');
+
+    // 400 + 400 = 800 < 1000, no prune yet — third capture triggers it.
+    final biggerPath = await makeImageFile(600);
+    await repo.captureImage(mediaPath: biggerPath, mimeType: 'image/jpeg');
+
+    final history = await repo.watchHistory().first;
+    // Expect oldClip gone; the two newer clips remain.
+    expect(history.any((c) => c.id == oldClip.id), isFalse);
+    expect(history, hasLength(2));
+  });
+
+  test('media-byte cap: pinned images are exempt', () async {
+    repo.mediaByteBudget = 1000;
+    repo.isProSupplier = () => false;
+    final pinnedPath = await makeImageFile(600);
+    final pinned = await repo.captureImage(
+      mediaPath: pinnedPath,
+      mimeType: 'image/jpeg',
+    );
+    await repo.togglePin(pinned.id, true);
+
+    // Capture another 600-byte image — would push total to 1200 > 1000.
+    final newerPath = await makeImageFile(600);
+    await repo.captureImage(mediaPath: newerPath, mimeType: 'image/jpeg');
+
+    final history = await repo.watchHistory().first;
+    // Pinned must still be present even though it is the oldest.
+    expect(history.any((c) => c.id == pinned.id), isTrue);
+  });
+
+  test('media-byte cap: Pro users skip the cap entirely', () async {
+    repo.mediaByteBudget = 100;
+    repo.isProSupplier = () => true;
+    for (var i = 0; i < 5; i++) {
+      final path = await makeImageFile(80);
+      await repo.captureImage(mediaPath: path, mimeType: 'image/jpeg');
+    }
+    final history = await repo.watchHistory().first;
+    expect(history, hasLength(5));
+  });
 }

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
+// ignore: implementation_imports
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:uuid/uuid.dart';
 
 import '../core/constants.dart';
@@ -26,6 +28,13 @@ class ClipRepository {
   /// caller that forgets to wire it stays in the safe (capped) state.
   /// Wired from `providers.dart` after the settings store is ready.
   bool Function() isProSupplier = () => false;
+
+  /// Maximum total bytes of stored image clips for non-Pro users. Exposed
+  /// as a field (defaulting to [AppConstants.freeTierMediaBytes]) so tests
+  /// can drive the cap without stuffing 200 MB of data into the in-memory
+  /// database. Production callers should leave this at the default.
+  @visibleForTesting
+  int mediaByteBudget = AppConstants.freeTierMediaBytes;
 
   /// Active history, most-recently-used first, pinned entries floated to top.
   /// Sorted by [updatedAt] (not createdAt) so that copying a clip floats it
@@ -189,9 +198,9 @@ class ClipRepository {
           ..orderBy([(t) => OrderingTerm.asc(t.updatedAt)]))
         .get();
     final totalBytes = images.fold<int>(0, (sum, c) => sum + c.byteSize);
-    if (totalBytes + incomingBytes <= AppConstants.freeTierMediaBytes) return;
+    if (totalBytes + incomingBytes <= mediaByteBudget) return;
 
-    var budget = totalBytes + incomingBytes - AppConstants.freeTierMediaBytes;
+    var budget = totalBytes + incomingBytes - mediaByteBudget;
     for (final clip in images) {
       if (clip.isPinned) continue;
       if (budget <= 0) break;
