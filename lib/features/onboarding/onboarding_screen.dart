@@ -54,10 +54,15 @@ class OnboardingScreen extends ConsumerWidget {
               leading: const Icon(LucideIcons.play),
               child: const Text('Enable capture service'),
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   await bridge.host.startService();
                   await controller.setCaptureServiceEnabled(true);
-                } catch (_) {}
+                } catch (e) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Could not enable capture: $e')),
+                  );
+                }
               },
             ),
             // The floating-bubble overlay is not built yet. Permission entry
