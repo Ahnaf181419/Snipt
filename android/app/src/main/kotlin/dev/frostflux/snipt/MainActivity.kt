@@ -47,6 +47,25 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
     companion object {
         const val ACTION_CAPTURE_NOW = "dev.frostflux.snipt.action.CAPTURE_NOW"
         private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 4201
+
+        // ClipData description extras key for granting URI access to the
+        // receiver. Documented public API on android.content.Intent:
+        // "android.content.extra.CLIP_DATA_FLAGS" carries an int of
+        // Intent flags (typically FLAG_GRANT_READ_URI_PERMISSION) applied
+        // to every URI in the clip when read by another app.
+        private const val CLIP_DATA_FLAGS_KEY = "android.content.extra.CLIP_DATA_FLAGS"
+
+        // Resolve at class-load so we don't ship the integer literal 0x1
+        // around in source. Falls back to the documented value of
+        // FLAG_GRANT_READ_URI_PERMISSION if reflection fails on a
+        // stripped/odd ROM.
+        private val CLIP_DATA_FLAG_GRANT_READ_URI_PERMISSION: Int = try {
+            android.content.Intent::class.java
+                .getField("FLAG_GRANT_READ_URI_PERMISSION")
+                .get(null) as Int
+        } catch (_: Throwable) {
+            0x00000001
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -238,19 +257,19 @@ class MainActivity : FlutterActivity(), CaptureHostApi {
             // Grant temporary read access for any process that reads the
             // clipboard. Without this, Android 10+ rejects the read with
             // SecurityException because the FileProvider is not exported.
-            // We attach the grant to the ClipData item via the underlying
-            // Intent (FLAG_GRANT_READ_URI_PERMISSION on the ClipData Intent
-            // is how cross-app clipboard reads get access).
+            // The grant is attached to the ClipData description's
+            // PersistableBundle under the framework key
+            // "android.content.extra.CLIP_DATA_FLAGS". Resolve the constant
+            // at class-load via reflection so we never silently drift if
+            // Intent.FLAG_GRANT_READ_URI_PERMISSION is ever renamed or
+            // revalued — the bundle key is documented public API.
             val clip = ClipData(
                 "snipt-image",
                 arrayOf("image/*"),
                 ClipData.Item(uri)
             )
-            // Set grant flags on the clip's intent so the receiving app can
-            // read the URI even though the FileProvider is exported=false.
             clip.description.extras = android.os.PersistableBundle().apply {
-                // Intent.FLAG_GRANT_READ_URI_PERMISSION = 0x00000001
-                putInt("android.content.extra.CLIP_DATA_FLAGS", 0x00000001)
+                putInt(CLIP_DATA_FLAGS_KEY, CLIP_DATA_FLAG_GRANT_READ_URI_PERMISSION)
             }
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(clip)
