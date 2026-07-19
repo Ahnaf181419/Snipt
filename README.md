@@ -11,7 +11,7 @@ Capture text you copy, search through it, pin what matters, and reuse it later. 
 - **Quick capture** - Tap the Capture button, use the Quick Settings tile, or share text from any app.
 - **Full-text search** - Find any clip instantly with FTS5-powered search.
 - **Auto-cleanup** - Configurable retention period (default 30 days) to keep your history tidy.
-- **Premium UX** - Material 3 with dynamic color, skeleton loading, haptic feedback, and smooth animations.
+- **Premium UX** - shadcn/ui (zinc neutrals) with lucide icons, skeleton loading, haptic feedback, and smooth animations.
 - **Battery efficient** - No background polling. Capture happens on your terms.
 
 ## Privacy
@@ -34,7 +34,7 @@ flutter build apk --debug      # or --release with a signing key
 
 ## Tech Stack
 
-Flutter 3.44 / Dart 3.12, Riverpod 3, Drift 2.33 + SQLCipher, Pigeon 26, Material 3 with dynamic color.
+Flutter 3.44 / Dart 3.12, Riverpod 3, Drift 2.33 + SQLCipher, Pigeon 26, shadcn_ui with lucide icons.
 
 ## Architecture
 
