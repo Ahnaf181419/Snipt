@@ -233,4 +233,62 @@ void main() {
     final history = await repo.watchHistory().first;
     expect(history, hasLength(5));
   });
+
+  // ─── FTS5 sanitisation tests ─────────────────────────────────────
+  //
+  // _toFtsQuery strips FTS5 operator meta-chars and quote-wraps each
+  // token. If the sanitiser misses a case, the MATCH query throws a
+  // SQLite parse error and the search stream fails. These tests push
+  // adversarial input through watchSearch and assert the call returns
+  // (possibly empty) rather than throwing.
+
+  Future<void> expectNoFtsCrash(String query) async {
+    final hits = await repo.watchSearch(query).first;
+    // No assertion on count — sanitiser may turn the query into
+    // nothing (returning empty). The invariant is just that the
+    // FTS5 MATCH clause does not throw.
+    expect(hits, isA<List<Clip>>());
+  }
+
+  test('FTS5: parentheses do not throw', () async {
+    await repo.capture(ev('flutter clipboard manager'));
+    await expectNoFtsCrash('(test');
+    await expectNoFtsCrash('test)');
+  });
+
+  test('FTS5: caret, dash, asterisk, backslash stripped', () async {
+    await repo.capture(ev('flutter clipboard manager'));
+    await expectNoFtsCrash('a^b');
+    await expectNoFtsCrash('-word');
+    await expectNoFtsCrash('word*');
+    await expectNoFtsCrash('back\\slash');
+  });
+
+  test('FTS5: nested quotes handled', () async {
+    await repo.capture(ev('flutter clipboard manager'));
+    await expectNoFtsCrash('"unclosed');
+    await expectNoFtsCrash('""double""');
+  });
+
+  test('FTS5: only-special-chars query returns empty (not error)', () async {
+    await repo.capture(ev('flutter clipboard manager'));
+    await expectNoFtsCrash('()*-^\\');
+    await expectNoFtsCrash('   ');
+  });
+
+  test('FTS5: real prefix search still works after sanitisation', () async {
+    await repo.capture(ev('flutter clipboard manager'));
+    await repo.capture(ev('completely unrelated note'));
+    final hits = await repo.watchSearch('clip').first;
+    expect(hits, hasLength(1));
+    expect(hits.single.content, contains('clipboard'));
+  });
+
+  test('FTS5: query with mixed special chars still matches', () async {
+    await repo.capture(ev('hello world'));
+    // Quote + asterisk should be stripped; the surviving "hello" token
+    // should still find the row.
+    final hits = await repo.watchSearch('"hello*').first;
+    expect(hits, hasLength(1));
+  });
 }
